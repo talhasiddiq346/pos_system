@@ -2,6 +2,7 @@
 import { useState } from "react";
 import Sidebar, { SECTIONS_BY_ROLE, SectionKey } from "./Sidebar";
 import TopBar from "./TopBar";
+import TopBarRider from "./delivery/TopBarRider";
 import BranchesPanel from "./BranchesPanel";
 import StaffPanel from "./StaffPanel";
 import CallCenterPanel from "./CallCenterPanel";
@@ -22,8 +23,23 @@ export default function Dashboard({ user }: { user: User }) {
   const sections = SECTIONS_BY_ROLE[user.role] ?? [{ key: "overview" as SectionKey, label: "Overview" }];
   const [active, setActive] = useState<SectionKey>(sections[0].key);
 
+  // ═══════════════════════════════════════════════════
+  // DELIVERY ROLE — Mobile-first layout with compact topbar
+  // ═══════════════════════════════════════════════════
+  if (user.role === "delivery") {
+    return (
+      <div className="min-h-screen bg-[#F5F6F4]">
+        <TopBarRider user={user} />
+        <RiderScreen user={user} />
+      </div>
+    );
+  }
+
+  // ═══════════════════════════════════════════════════
+  // ALL OTHER ROLES — Standard sidebar + topbar layout
+  // ═══════════════════════════════════════════════════
+
   function renderOverview() {
-    // Super admin + branch admin → rich overview dashboard
     if (user.role === "super_admin" || user.role === "branch_admin") {
       return (
         <OverviewDashboard
@@ -35,11 +51,9 @@ export default function Dashboard({ user }: { user: User }) {
       );
     }
 
-    // Other roles → placeholder
     const placeholderText: Record<string, string> = {
       cashier: "Use the POS section to take orders.",
       call_center: "Order intake form is in the Take order section.",
-      delivery: "Delivery queue is in My Orders section.",
       chef: "Kitchen orders are in the Kitchen section.",
     };
 
@@ -72,10 +86,6 @@ export default function Dashboard({ user }: { user: User }) {
         return <CallCenterScreen user={user} />;
       case "kitchen":
         return <ChefScreen user={user} />;
-      case "rider-home":
-      case "rider-waiting":
-      case "rider-history":
-        return <RiderScreen user={user} />;
       case "cash-submissions":
         return <CashSubmissionsPanel user={user} />;
       case "cash-report":
