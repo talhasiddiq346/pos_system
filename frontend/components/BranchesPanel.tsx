@@ -17,7 +17,7 @@ type StaffEntry = {
 const STAFF_ROLE_LABEL: Record<StaffRole, string> = {
   cashier: "Cashier",
   chef: "Chef",
-  
+  delivery: "Delivery Rider",
 };
 
 function newStaffEntry(role: StaffRole = "cashier"): StaffEntry {
