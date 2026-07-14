@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tandoor — Food Delivery Preview</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'DM Sans', -apple-system, sans-serif;
+    background: #EDE8E1;
+    padding: 24px;
+    display: flex;
+    justify-content: center;
+    color: #1A1613;
+  }
+  .phone {
+    width: 100%;
+    max-width: 430px;
+    background: #FAF8F5;
+    border-radius: 28px;
+    overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+  }
+
+  /* Navbar */
+  .nav {
+    background: #fff;
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid #F0EBE4;
+  }
+  .logo { display: flex; align-items: center; gap: 9px; }
+  .logo-mark {
+    width: 34px; height: 34px; background: #E8542F;
+    border-radius: 10px; display: flex; align-items: center;
+    justify-content: center; font-size: 18px;
+  }
+  .logo-text { font-size: 19px; font-weight: 700; letter-spacing: -0.02em; }
+  .nav-right { display: flex; align-items: center; gap: 14px; }
+  .location {
+    display: flex; align-items: center; gap: 6px;
+    background: #F5F1EB; padding: 8px 12px; border-radius: 9px;
+    font-size: 13px; font-weight: 500; color: #4A423B;
+  }
+  .cart-btn {
+    position: relative; width: 40px; height: 40px;
+    background: #1A1613; border-radius: 11px;
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: 18px;
+  }
+  .badge {
+    position: absolute; top: -6px; right: -6px;
+    background: #E8542F; color: #fff; font-size: 10px;
+    font-weight: 700; width: 19px; height: 19px;
+    border-radius: 50%; display: flex; align-items: center;
+    justify-content: center; border: 2px solid #fff;
+  }
+
+  /* Hero */
+  .hero {
+    position: relative; background: #1A1613;
+    padding: 32px 20px; overflow: hidden;
+  }
+  .hero-blob1 {
+    position: absolute; right: -30px; top: -30px;
+    width: 180px; height: 180px; background: #E8542F;
+    opacity: 0.13; border-radius: 50%;
+  }
+  .hero-blob2 {
+    position: absolute; right: 70px; bottom: -50px;
+    width: 130px; height: 130px; background: #F0A93B;
+    opacity: 0.1; border-radius: 50%;
+  }
+  .hero-inner {
+    position: relative; display: flex; align-items: center;
+    justify-content: space-between; gap: 18px;
+  }
+  .hero-pill {
+    display: inline-flex; align-items: center; gap: 7px;
+    background: rgba(240,169,59,0.15); padding: 6px 12px;
+    border-radius: 20px; margin-bottom: 14px;
+  }
+  .dot-green { width: 6px; height: 6px; background: #4ADE80; border-radius: 50%; }
+  .hero-pill span { color: #F0A93B; font-size: 11px; font-weight: 600; }
+  .hero h1 {
+    color: #fff; font-size: 26px; font-weight: 700;
+    line-height: 1.15; letter-spacing: -0.02em; margin-bottom: 8px;
+  }
+  .hero p { color: #A89F94; font-size: 14px; }
+  .hero-emoji {
+    width: 120px; height: 120px;
+    background: linear-gradient(135deg, #2A231D, #1A1613);
+    border-radius: 20px; display: flex; align-items: center;
+    justify-content: center; font-size: 58px;
+    border: 1px solid rgba(255,255,255,0.06); flex-shrink: 0;
+  }
+
+  /* Categories */
+  .cats {
+    background: #fff; padding: 16px 20px;
+    display: flex; gap: 14px; overflow-x: auto;
+    border-bottom: 1px solid #F0EBE4;
+  }
+  .cats::-webkit-scrollbar { display: none; }
+  .cat { display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 58px; cursor: pointer; }
+  .cat-icon {
+    width: 54px; height: 54px; background: #F5F1EB;
+    border-radius: 15px; display: flex; align-items: center;
+    justify-content: center; font-size: 25px;
+    transition: all 0.2s;
+  }
+  .cat.active .cat-icon { background: #1A1613; }
+  .cat span { font-size: 11px; font-weight: 500; color: #6B6259; }
+  .cat.active span { color: #1A1613; font-weight: 600; }
+
+  /* Section */
+  .section { padding: 22px 20px; }
+  .section-head {
+    display: flex; align-items: baseline; justify-content: space-between;
+    margin-bottom: 14px;
+  }
+  .section-head h2 { font-size: 18px; font-weight: 700; letter-spacing: -0.01em; }
+  .section-head .count { font-size: 12px; color: #E8542F; font-weight: 600; }
+
+  /* Grid cards */
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .card {
+    background: #fff; border-radius: 16px; overflow: hidden;
+    border: 1px solid #F0EBE4;
+  }
+  .card-img {
+    height: 115px; display: flex; align-items: center;
+    justify-content: center; font-size: 46px; position: relative;
+  }
+  .tag {
+    position: absolute; top: 8px; left: 8px;
+    color: #fff; font-size: 9px; font-weight: 700;
+    padding: 3px 8px; border-radius: 6px;
+  }
+  .card-body { padding: 12px; }
+  .card-body h3 { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+  .rating { display: flex; align-items: center; gap: 4px; margin-bottom: 8px; }
+  .star { color: #F0A93B; font-size: 12px; }
+  .rating span { font-size: 11px; color: #6B6259; font-weight: 500; }
+  .card-foot { display: flex; align-items: center; justify-content: space-between; }
+  .price { font-size: 15px; font-weight: 700; }
+  .add-sm {
+    width: 30px; height: 30px; background: #1A1613;
+    border: none; border-radius: 9px; color: #fff;
+    font-size: 18px; cursor: pointer; display: flex;
+    align-items: center; justify-content: center;
+  }
+
+  /* List cards */
+  .list-card {
+    background: #fff; border-radius: 16px; padding: 12px;
+    display: flex; gap: 14px; border: 1px solid #F0EBE4;
+    margin-bottom: 10px;
+  }
+  .list-img {
+    width: 82px; height: 82px; border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 36px; flex-shrink: 0;
+  }
+  .list-info { flex: 1; min-width: 0; }
+  .list-top { display: flex; align-items: start; justify-content: space-between; gap: 8px; }
+  .list-info h3 { font-size: 15px; font-weight: 600; margin-bottom: 2px; }
+  .list-info .desc { font-size: 12px; color: #A89F94; margin-bottom: 6px; }
+  .spicy {
+    font-size: 10px; font-weight: 700; color: #16A34A;
+    background: #DCFCE7; padding: 3px 7px; border-radius: 5px;
+    white-space: nowrap;
+  }
+  .list-foot { display: flex; align-items: center; justify-content: space-between; margin-top: 4px; }
+  .add-lg {
+    background: #FFF0E8; color: #E8542F; border: 1px solid #FCD9C8;
+    border-radius: 9px; padding: 7px 16px; font-size: 13px;
+    font-weight: 600; cursor: pointer; display: flex;
+    align-items: center; gap: 5px;
+  }
+
+  /* Bottom bar */
+  .checkout-bar {
+    background: #fff; border-top: 1px solid #F0EBE4;
+    padding: 16px 20px; display: flex; align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 -2px 16px rgba(0,0,0,0.04);
+  }
+  .cb-left { display: flex; align-items: center; gap: 12px; }
+  .cb-icon {
+    width: 44px; height: 44px; background: #1A1613;
+    border-radius: 12px; display: flex; align-items: center;
+    justify-content: center; color: #fff; font-size: 20px;
+    position: relative;
+  }
+  .cb-left .sub { font-size: 12px; color: #A89F94; }
+  .cb-left .total { font-size: 17px; font-weight: 700; }
+  .checkout-btn {
+    background: #E8542F; color: #fff; border: none;
+    border-radius: 12px; padding: 13px 26px; font-size: 14px;
+    font-weight: 700; cursor: pointer; display: flex;
+    align-items: center; gap: 8px;
+  }
+  .ico { font-size: 18px; line-height: 1; }
+</style>
+</head>
+<body>
+  <div class="phone">
+
+    <!-- Nav -->
+    <div class="nav">
+      <div class="logo">
+        <div class="logo-mark">🔥</div>
+        <span class="logo-text">Tandoor</span>
+      </div>
+      <div class="nav-right">
+        <div class="location">
+          <span class="ico">📍</span> Clifton
+          <span style="color:#A89F94;">▾</span>
+        </div>
+        <div class="cart-btn">
+          🛍️
+          <span class="badge">2</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Hero -->
+    <div class="hero">
+      <div class="hero-blob1"></div>
+      <div class="hero-blob2"></div>
+      <div class="hero-inner">
+        <div style="flex:1;">
+          <div class="hero-pill">
+            <span class="dot-green"></span>
+            <span>Open · Delivers in 30 min</span>
+          </div>
+          <h1>Authentic desi<br>flavours, delivered</h1>
+          <p>Hot, fresh, and at your door in minutes</p>
+        </div>
+        <div class="hero-emoji">🍛</div>
+      </div>
+    </div>
+
+    <!-- Categories -->
+    <div class="cats">
+      <div class="cat active"><div class="cat-icon">🍔</div><span>All</span></div>
+      <div class="cat"><div class="cat-icon">🍗</div><span>BBQ</span></div>
+      <div class="cat"><div class="cat-icon">🍕</div><span>Pizza</span></div>
+      <div class="cat"><div class="cat-icon">🥘</div><span>Curry</span></div>
+      <div class="cat"><div class="cat-icon">🥤</div><span>Drinks</span></div>
+      <div class="cat"><div class="cat-icon">🍰</div><span>Dessert</span></div>
+    </div>
+
+    <!-- Popular -->
+    <div class="section">
+      <div class="section-head">
+        <h2>Popular now</h2>
+        <span class="count">12 items</span>
+      </div>
+      <div class="grid">
+        <div class="card">
+          <div class="card-img" style="background:linear-gradient(135deg,#FFF0E8,#FFE4D6);">
+            🍗
+            <span class="tag" style="background:#E8542F;">BESTSELLER</span>
+          </div>
+          <div class="card-body">
+            <h3>Chicken Tikka</h3>
+            <div class="rating"><span class="star">★</span><span>4.8 · 320+ orders</span></div>
+            <div class="card-foot">
+              <span class="price">Rs 850</span>
+              <button class="add-sm">+</button>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-img" style="background:linear-gradient(135deg,#FEF3E0,#FDE8C8);">🍔</div>
+          <div class="card-body">
+            <h3>Zinger Burger</h3>
+            <div class="rating"><span class="star">★</span><span>4.6 · 210+ orders</span></div>
+            <div class="card-foot">
+              <span class="price">Rs 650</span>
+              <button class="add-sm">+</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- BBQ section -->
+      <div style="margin-top:22px;">
+        <h2 style="font-size:18px;font-weight:700;letter-spacing:-0.01em;margin-bottom:14px;">BBQ &amp; Grills</h2>
+
+        <div class="list-card">
+          <div class="list-img" style="background:linear-gradient(135deg,#FFF0E8,#FFE4D6);">🥘</div>
+          <div class="list-info">
+            <div class="list-top">
+              <div>
+                <h3>Mutton Karahi</h3>
+                <p class="desc">Half kg · serves 2-3 people</p>
+              </div>
+              <span class="spicy">SPICY</span>
+            </div>
+            <div class="list-foot">
+              <span class="price" style="font-size:16px;">Rs 1,650</span>
+              <button class="add-lg">＋ Add</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="list-card">
+          <div class="list-img" style="background:linear-gradient(135deg,#FEF3E0,#FDE8C8);">🍢</div>
+          <div class="list-info">
+            <div class="list-top">
+              <div>
+                <h3>Seekh Kebab</h3>
+                <p class="desc">6 pieces · with naan &amp; chutney</p>
+              </div>
+            </div>
+            <div class="list-foot">
+              <span class="price" style="font-size:16px;">Rs 720</span>
+              <button class="add-lg">＋ Add</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Checkout bar -->
+    <div class="checkout-bar">
+      <div class="cb-left">
+        <div class="cb-icon">🛍️<span class="badge">2</span></div>
+        <div>
+          <p class="sub">2 items in cart</p>
+          <p class="total">Rs 1,500</p>
+        </div>
+      </div>
+      <button class="checkout-btn">Checkout →</button>
+    </div>
+
+  </div>
+</body>
+</html>
