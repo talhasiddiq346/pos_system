@@ -49,3 +49,8 @@ coverage/
 # Backend test/dev leftovers
 backend/cookies.txt
 backend/hash.js
+
+# Database dumps
+*.sql
+*.sql.bak
+tandoor-dump*
