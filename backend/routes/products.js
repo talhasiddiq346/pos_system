@@ -97,21 +97,86 @@ router.get(
 // ═══════════════════════════════════════════════════
 router.get("/categories/:branchId", requireAuth, async (req, res) => {
   const { branchId } = req.params;
-
+ 
   if (req.user.role === "branch_admin" && req.user.branch_id !== Number(branchId)) {
     return res.status(403).json({ error: "Access denied" });
   }
-
+ 
   const result = await pool.query(
-    `SELECT DISTINCT category FROM products
+    `SELECT category AS name, COUNT(*)::int AS count
+     FROM products
      WHERE branch_id = $1 AND category IS NOT NULL AND category != ''
+     GROUP BY category
      ORDER BY category`,
     [branchId]
   );
-  res.json(result.rows.map((r) => r.category));
+  res.json(result.rows);
 });
 
-// ═══════════════════════════════════════════════════
+router.patch(
+  "/categories/:branchId/rename",
+  requireAuth,
+  requireRole("super_admin", "branch_admin"),
+  async (req, res) => {
+    const { branchId } = req.params;
+    const { old_name, new_name } = req.body;
+ 
+    if (req.user.role === "branch_admin" && req.user.branch_id !== Number(branchId)) {
+      return res.status(403).json({ error: "Access denied" });
+    }
+ 
+    if (!old_name || !new_name?.trim()) {
+      return res.status(400).json({ error: "Old and new category names are required" });
+    }
+ 
+    const trimmedNew = new_name.trim();
+ 
+    // Check if new name already exists (different from old) for this branch
+    const dup = await pool.query(
+      `SELECT 1 FROM products
+       WHERE branch_id = $1 AND LOWER(category) = LOWER($2) AND category != $3
+       LIMIT 1`,
+      [branchId, trimmedNew, old_name]
+    );
+    if (dup.rowCount > 0) {
+      return res.status(400).json({ error: `Category "${trimmedNew}" already exists` });
+    }
+ 
+    const result = await pool.query(
+      `UPDATE products SET category = $1
+       WHERE branch_id = $2 AND category = $3
+       RETURNING id`,
+      [trimmedNew, branchId, old_name]
+    );
+ 
+    res.json({ ok: true, updated: result.rowCount });
+  }
+);
+
+router.delete(
+  "/categories/:branchId/:name",
+  requireAuth,
+  requireRole("super_admin", "branch_admin"),
+  async (req, res) => {
+    const { branchId, name } = req.params;
+ 
+    if (req.user.role === "branch_admin" && req.user.branch_id !== Number(branchId)) {
+      return res.status(403).json({ error: "Access denied" });
+    }
+ 
+    const decodedName = decodeURIComponent(name);
+ 
+    const result = await pool.query(
+      `UPDATE products SET category = NULL
+       WHERE branch_id = $1 AND category = $2
+       RETURNING id`,
+      [branchId, decodedName]
+    );
+ 
+    res.json({ ok: true, affected: result.rowCount });
+  }
+);
+ 
 // POST create product (no image yet)
 // ═══════════════════════════════════════════════════
 router.post("/", requireAuth, requireRole("super_admin", "branch_admin"), async (req, res) => {
@@ -168,19 +233,37 @@ router.patch("/:id", requireAuth, requireRole("super_admin", "branch_admin"), as
 // ═══════════════════════════════════════════════════
 // DELETE product (also deletes image from Cloudinary or local disk)
 // ═══════════════════════════════════════════════════
+ 
 router.delete("/:id", requireAuth, requireRole("super_admin", "branch_admin"), async (req, res) => {
   const { id } = req.params;
-
+ 
   const existing = await pool.query("SELECT * FROM products WHERE id = $1", [id]);
   if (existing.rows.length === 0) return res.status(404).json({ error: "Product not found" });
   const product = existing.rows[0];
-
+ 
   if (req.user.role === "branch_admin" && product.branch_id !== req.user.branch_id) {
     return res.status(403).json({ error: "You can only manage your own branch's products" });
   }
-
+ 
   await pool.query("DELETE FROM products WHERE id = $1", [id]);
-  await deleteProductImage(product.image_url, product.image_public_id);
+ 
+  // ── Shared image protection
+  // Only delete from Cloudinary if NO OTHER product uses the same image
+  if (product.image_public_id) {
+    const others = await pool.query(
+      "SELECT id FROM products WHERE image_public_id = $1 LIMIT 1",
+      [product.image_public_id]
+    );
+    if (others.rowCount === 0) {
+      // No other product uses this image — safe to delete from Cloudinary
+      await deleteProductImage(product.image_url, product.image_public_id);
+    }
+    // else: shared image, leave it in Cloudinary
+  } else if (product.image_url) {
+    // Legacy local file — just delete
+    await deleteProductImage(product.image_url, null);
+  }
+ 
   res.json({ ok: true });
 });
 
@@ -327,5 +410,78 @@ router.delete("/variants/:id", requireAuth, requireRole("super_admin", "branch_a
   await pool.query("DELETE FROM product_variants WHERE id = $1", [id]);
   res.json({ ok: true });
 });
+router.post(
+  "/bulk",
+  requireAuth,
+  requireRole("super_admin"),
+  cloudUpload.single("image"),
+  async (req, res) => {
+    try {
+      const { name, price, category, branch_ids } = req.body;
+ 
+      // Parse branch_ids (comes as JSON string from FormData)
+      let branchIds;
+      try {
+        branchIds = typeof branch_ids === "string" ? JSON.parse(branch_ids) : branch_ids;
+      } catch {
+        return res.status(400).json({ error: "Invalid branch_ids format" });
+      }
+ 
+      if (!Array.isArray(branchIds) || branchIds.length === 0) {
+        return res.status(400).json({ error: "At least one branch is required" });
+      }
+ 
+      if (!name || price === undefined || price === null) {
+        return res.status(400).json({ error: "Name and price are required" });
+      }
+ 
+      if (Number(price) < 0) {
+        return res.status(400).json({ error: "Price cannot be negative" });
+      }
+ 
+      // Verify all branch IDs exist
+      const branchCheck = await pool.query(
+        "SELECT id FROM branches WHERE id = ANY($1::int[])",
+        [branchIds]
+      );
+      if (branchCheck.rowCount !== branchIds.length) {
+        return res.status(400).json({ error: "One or more branches don't exist" });
+      }
+ 
+      // ── Upload image ONCE to Cloudinary (if provided)
+      let imageUrl = null;
+      let imagePublicId = null;
+      if (req.file) {
+        const uploaded = await uploadToCloudinary(req.file.buffer, "tandoor/products");
+        imageUrl = uploaded.url;
+        imagePublicId = uploaded.publicId;
+      }
+ 
+      // ── Insert into each branch
+      const created = [];
+      for (const bid of branchIds) {
+        const result = await pool.query(
+          `INSERT INTO products (branch_id, name, price, category, image_url, image_public_id)
+           VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+          [bid, name, Number(price), category?.trim() || null, imageUrl, imagePublicId]
+        );
+        created.push(result.rows[0]);
+      }
+ 
+      res.status(201).json({
+        ok: true,
+        count: created.length,
+        products: created,
+      });
+    } catch (err) {
+      console.error("Bulk product create error:", err);
+      if (err.message?.includes("images allowed")) {
+        return res.status(400).json({ error: err.message });
+      }
+      res.status(500).json({ error: "Server error" });
+    }
+  }
+);
+ 
 
 export default router;
