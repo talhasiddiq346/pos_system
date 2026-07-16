@@ -1,12 +1,28 @@
 import { Router } from "express";
 import { pool } from "../db.js";
+import { validateVoucher } from "./settings.js";
 
 const router = Router();
+
+// The public website uses "pickup"/"cod"/"online"; the orders table (shared with
+// POS/call-center) uses "takeaway"/"cash"/"card" — translate at the boundary.
+function toDbOrderType(orderType) {
+  return orderType === "pickup" ? "takeaway" : "delivery";
+}
+function toPublicOrderType(orderType) {
+  return orderType === "takeaway" ? "pickup" : "delivery";
+}
+function toDbPaymentMethod(paymentMethod) {
+  return paymentMethod === "online" ? "card" : "cash";
+}
+function toPublicPaymentMethod(paymentMethod) {
+  return paymentMethod === "card" ? "online" : "cod";
+}
 
 // Branches list — no auth
 router.get("/branches", async (req, res) => {
   const result = await pool.query(
-    "SELECT id, name, address FROM branches ORDER BY name"
+    "SELECT id, name, address, phone, city FROM branches ORDER BY name"
   );
   res.json(result.rows);
 });
@@ -44,11 +60,21 @@ router.get("/menu/:branchId", async (req, res) => {
   })));
 });
 
+// Category pictures for a branch — no auth
+router.get("/categories/:branchId", async (req, res) => {
+  const { branchId } = req.params;
+  const result = await pool.query(
+    "SELECT name, image_url FROM category_images WHERE branch_id = $1 AND image_url IS NOT NULL",
+    [branchId]
+  );
+  res.json(result.rows);
+});
+
 // Place order — no auth (online orders)
 router.post("/order", async (req, res) => {
   const {
     branch_id, items, customer_name, customer_phone,
-    customer_address, payment_method,
+    customer_address, payment_method, order_type, voucher_code,
   } = req.body;
 
   if (!branch_id) return res.status(400).json({ error: "Branch is required" });
@@ -61,7 +87,10 @@ router.post("/order", async (req, res) => {
                      /^923[0-9]{9}$/.test(cleanedPhone);
   if (!validPhone) return res.status(400).json({ error: "Valid Pakistani phone required" });
 
-  if (!customer_address?.trim()) return res.status(400).json({ error: "Address is required" });
+  const dbOrderType = toDbOrderType(order_type);
+  if (dbOrderType === "delivery" && !customer_address?.trim()) {
+    return res.status(400).json({ error: "Address is required" });
+  }
   if (!Array.isArray(items) || items.length === 0) return res.status(400).json({ error: "Cart is empty" });
 
   function generateOrderCode() {
@@ -117,20 +146,38 @@ router.post("/order", async (req, res) => {
       });
     }
 
+    // ── Voucher: re-validate and compute the discount server-side.
+    // The client-sent discount is never trusted — only what we compute here is charged.
+    let discountAmount = 0;
+    let appliedVoucherCode = null;
+    if (voucher_code) {
+      const { error, status, voucher, discount } = await validateVoucher(client, voucher_code, subtotal);
+      if (error) throw { status, message: error };
+      discountAmount = discount;
+      appliedVoucherCode = voucher.code;
+    }
+    const total = subtotal - discountAmount;
+
     const orderCode = generateOrderCode();
     const orderRes = await client.query(
       `INSERT INTO orders
          (branch_id, source, order_type, status, subtotal, total,
-          payment_method, customer_name, customer_phone, customer_address, order_code)
-       VALUES ($1, 'online', 'delivery', 'pending', $2, $3, $4, $5, $6, $7, $8)
+          payment_method, customer_name, customer_phone, customer_address, order_code,
+          voucher_code, discount_amount)
+       VALUES ($1, 'online', $2, 'pending', $3, $4, $5, $6, $7, $8, $9, $10, $11)
        RETURNING *`,
       [
-        branch_id, subtotal, subtotal,
-        payment_method || "cash",
-        customer_name, customer_phone, customer_address, orderCode
+        branch_id, dbOrderType, subtotal, total,
+        toDbPaymentMethod(payment_method),
+        customer_name, customer_phone, customer_address || null, orderCode,
+        appliedVoucherCode, discountAmount,
       ]
     );
     const order = orderRes.rows[0];
+
+    if (appliedVoucherCode) {
+      await client.query("UPDATE vouchers SET used_count = used_count + 1 WHERE code = $1", [appliedVoucherCode]);
+    }
 
     for (const it of resolvedItems) {
       await client.query(
@@ -147,6 +194,7 @@ router.post("/order", async (req, res) => {
     res.status(201).json({
       order_code: order.order_code,
       total: order.total,
+      discount_amount: order.discount_amount,
       status: order.status,
     });
   } catch (err) {
@@ -162,13 +210,16 @@ router.get("/track/:orderCode", async (req, res) => {
   const { orderCode } = req.params;
 
   const result = await pool.query(
-    `SELECT o.id, o.order_code, o.status, o.order_type,
-            o.customer_name, o.total, o.created_at,
+    `SELECT o.id, o.order_code, o.status, o.order_type, o.payment_method,
+            o.customer_name, o.customer_phone, o.customer_address,
+            o.total, o.discount_amount, o.created_at,
+            b.name AS branch_name, b.address AS branch_address, b.phone AS branch_phone,
             CASE WHEN o.status IN ('dispatched','delivered')
               THEN u.name ELSE NULL END AS rider_name,
             CASE WHEN o.status IN ('dispatched','delivered')
               THEN u.phone ELSE NULL END AS rider_phone
      FROM orders o
+     JOIN branches b ON b.id = o.branch_id
      LEFT JOIN delivery_assignments da ON da.order_id = o.id
        AND da.status = 'accepted'
      LEFT JOIN users u ON u.id = da.rider_id
@@ -179,7 +230,20 @@ router.get("/track/:orderCode", async (req, res) => {
   if (result.rows.length === 0)
     return res.status(404).json({ error: "Order not found. Check your order code." });
 
-  res.json(result.rows[0]);
+  const order = result.rows[0];
+
+  const itemsRes = await pool.query(
+    `SELECT product_name AS name, variant_name AS variant, quantity AS qty, unit_price AS price
+     FROM order_items WHERE order_id = $1 ORDER BY id`,
+    [order.id]
+  );
+
+  res.json({
+    ...order,
+    order_type: toPublicOrderType(order.order_type),
+    payment_method: toPublicPaymentMethod(order.payment_method),
+    items: itemsRes.rows,
+  });
 });
 
 export default router;

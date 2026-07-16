@@ -18,6 +18,7 @@ import CashSubmissionsPanel from "./cashier/CashSubmissionsPanel";
 import CashReportPanel from "./admin/CashReportPanel";
 import ReportsDashboard from "./reports/ReportsDashboard";
 import OverviewDashboard from "./reports/OverviewDashboard";
+import WebsiteSettings from "./website-admin/WebsiteSettings";
 
 export default function Dashboard({ user }: { user: User }) {
   const sections = SECTIONS_BY_ROLE[user.role] ?? [{ key: "overview" as SectionKey, label: "Overview" }];
@@ -97,6 +98,8 @@ export default function Dashboard({ user }: { user: User }) {
             viewerBranchId={user.branch_id}
           />
         );
+      case "website":
+        return <WebsiteSettings />;
       default:
         return renderOverview();
     }

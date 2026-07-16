@@ -1,471 +1,839 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
-
-type Variant = { id: number; name: string; price: string };
-type Product = {
-  id: number; name: string; price: string;
-  category: string | null; image_url: string | null;
-  variants: Variant[];
-};
-type CartItem = {
-  key: string; product_id: number; product_name: string;
-  variant_id: number | null; variant_name: string | null;
-  unit_price: number; quantity: number;
-};
+import { useSiteSettings } from "@/lib/useSiteSettings";
+import SiteHeader from "./SiteHeader";
+import BannerCarousel from "./BannerCarousel";
 
 const API = (process.env.NEXT_PUBLIC_API_URL ?? "").replace(/\/api\/?$/, "") + "/api";
 const IMG = (process.env.NEXT_PUBLIC_API_URL ?? "").replace(/\/api\/?$/, "");
 
+type Branch = { id: number; name: string; address: string; phone?: string };
+type Variant = { id: number; name: string; price: number; is_available?: boolean };
+type Product = {
+  id: number;
+  name: string;
+  price: number;
+  category: string | null;
+  image_url: string | null;
+  description?: string | null;
+  is_available?: boolean;
+  is_popular?: boolean;
+  variants?: Variant[];
+};
+type CartItem = {
+  key: string;
+  product_id: number;
+  product_name: string;
+  variant_id: number | null;
+  variant_name: string | null;
+  unit_price: number;
+  quantity: number;
+  image_url?: string | null;
+};
+
 const CAT_EMOJI: Record<string, string> = {
-  "Burgers": "🍔", "Burger": "🍔",
-  "BBQ": "🍗", "Grills": "🍢",
-  "Curries": "🥘", "Curry": "🥘",
-  "Pizza": "🍕", "Pizzas": "🍕",
-  "Drinks": "🥤", "Beverages": "🥤",
-  "Desserts": "🍰", "Dessert": "🍰",
-  "Biryani": "🍛", "Rice": "🍚",
-  "Broast": "🍗", "Chicken": "🍗",
-  "Sandwiches": "🥪", "Sandwich": "🥪",
-  "Salads": "🥗", "Salad": "🥗",
-  "Pasta": "🍝", "pasta": "🍝",
-  "Wraps": "🌯", "Rolls": "🌯",
-  "Soup": "🍲", "Soups": "🍲",
+  "New Arrivals": "✨", "Deals": "🎁", "Kids Deal": "🧒",
+  "Starters": "🍟", "Soups": "🍲", "Chinese": "🥡",
+  "Fast Food": "🍔", "B.B.Q": "🍢", "BBQ": "🍢",
+  "Rice Platter": "🍛", "Live Karahi": "🥘", "Sea Food": "🦐",
+  "Pizza": "🍕", "Burgers": "🍔", "Pasta": "🍝",
+  "Wraps": "🌯", "Desserts": "🍰", "Drinks": "🥤",
+  "Biryani": "🍚", "Karahi": "🥘", "Main Course": "🍛",
   "Other": "🍽️",
 };
 
-const CARD_BG = [
-  "linear-gradient(135deg,#FFF0E8,#FFE4D6)",
-  "linear-gradient(135deg,#FEF3E0,#FDE8C8)",
-  "linear-gradient(135deg,#F0F9FF,#E0F2FE)",
-  "linear-gradient(135deg,#F0FFF4,#DCFCE7)",
-  "linear-gradient(135deg,#FDF4FF,#FAE8FF)",
-];
+function getCategoryEmoji(cat: string | null): string {
+  if (!cat) return "🍽️";
+  return CAT_EMOJI[cat] || "🍽️";
+}
 
-function getCategoryEmoji(cat: string): string {
-  if (CAT_EMOJI[cat]) return CAT_EMOJI[cat];
-  const lower = cat.toLowerCase();
-  for (const key of Object.keys(CAT_EMOJI)) {
-    if (key.toLowerCase() === lower) return CAT_EMOJI[key];
-  }
-  return "🍽️";
+function fixImageUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  if (url.startsWith("http")) return url;
+  return `${IMG}${url}`;
 }
 
 export default function WebsiteMenu({
-  branch, onCheckout, onBack, onTrack,
+  branch,
+  orderType,
+  onBack,
+  onTrack,
+  onCheckout,
 }: {
-  branch: { id: number; name: string };
-  onCheckout: (cart: CartItem[]) => void;
+  branch: Branch;
+  orderType?: "delivery" | "pickup";
   onBack: () => void;
   onTrack: () => void;
+  onCheckout: (cart: CartItem[]) => void;
 }) {
+  const site = useSiteSettings();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
   const [showCart, setShowCart] = useState(false);
-  const [activeCategory, setActiveCategory] = useState("All");
+  const [variantPicker, setVariantPicker] = useState<Product | null>(null);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [categoryImages, setCategoryImages] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    axios.get(`${API}/public/menu/${branch.id}`).then((r) => {
-      setProducts(r.data);
-      setLoading(false);
-    }).catch(() => setLoading(false));
+    axios.get<Product[]>(`${API}/public/menu/${branch.id}`)
+      .then((r) => setProducts(r.data))
+      .catch((err) => console.error("Menu fetch failed:", err))
+      .finally(() => setLoading(false));
+
+    axios.get<{ name: string; image_url: string }[]>(`${API}/public/categories/${branch.id}`)
+      .then((r) => setCategoryImages(Object.fromEntries(r.data.map((c) => [c.name, c.image_url]))))
+      .catch(() => setCategoryImages({}));
   }, [branch.id]);
 
-  const categories = ["All", ...Array.from(new Set(products.map((p) => p.category || "Other")))];
-  const filtered = activeCategory === "All" ? products : products.filter((p) => (p.category || "Other") === activeCategory);
-  const grouped = filtered.reduce<Record<string, Product[]>>((acc, p) => {
-    const cat = p.category || "Other";
-    if (!acc[cat]) acc[cat] = [];
-    acc[cat].push(p);
-    return acc;
-  }, {});
+  const categoryGroups = useMemo(() => {
+    const filtered = search.trim()
+      ? products.filter((p) => p.name.toLowerCase().includes(search.toLowerCase().trim()))
+      : products;
 
-  function addToCart(p: Product, variantId: number | null, variantName: string | null, price: number) {
-    const key = `${p.id}-${variantId ?? "base"}`;
+    const groups: Record<string, Product[]> = {};
+    for (const p of filtered) {
+      const cat = p.category || "Other";
+      if (!groups[cat]) groups[cat] = [];
+      groups[cat].push(p);
+    }
+    return groups;
+  }, [products, search]);
+
+  const categoryList = Object.keys(categoryGroups);
+  const heroProducts = products.filter((p) => p.image_url).slice(0, 5);
+  const curatedPopular = products.filter((p) => p.is_popular && p.is_available !== false);
+  const popularItems = (curatedPopular.length > 0 ? curatedPopular : products.filter((p) => p.image_url && p.is_available !== false)).slice(0, 8);
+
+  const cartCount = cart.reduce((s, c) => s + c.quantity, 0);
+  const subtotal = cart.reduce((s, c) => s + c.unit_price * c.quantity, 0);
+  const discountPct = 0;
+  const discountAmt = Math.round(subtotal * (discountPct / 100));
+  const total = subtotal - discountAmt;
+
+  function addToCart(product: Product, variant?: Variant) {
+    const key = `${product.id}-${variant?.id ?? "base"}`;
+    // Backend returns variant.price as ADDITIONAL to product price (same as old code)
+    const unitPrice = variant
+      ? Number(product.price) + Number(variant.price)
+      : Number(product.price);
+
     setCart((prev) => {
-      const ex = prev.find((c) => c.key === key);
-      if (ex) return prev.map((c) => c.key === key ? { ...c, quantity: c.quantity + 1 } : c);
-      return [...prev, { key, product_id: p.id, product_name: p.name, variant_id: variantId, variant_name: variantName, unit_price: price, quantity: 1 }];
+      const existing = prev.find((c) => c.key === key);
+      if (existing) {
+        return prev.map((c) => c.key === key ? { ...c, quantity: c.quantity + 1 } : c);
+      }
+      return [...prev, {
+        key,
+        product_id: product.id,
+        product_name: product.name,
+        variant_id: variant?.id ?? null,
+        variant_name: variant?.name ?? null,
+        unit_price: unitPrice,
+        quantity: 1,
+        image_url: product.image_url,
+      }];
+    });
+    setVariantPicker(null);
+  }
+
+  function updateQty(key: string, delta: number) {
+    setCart((prev) => {
+      const updated = prev.map((c) => c.key === key ? { ...c, quantity: c.quantity + delta } : c);
+      return updated.filter((c) => c.quantity > 0);
     });
   }
 
-  function changeQty(key: string, delta: number) {
-    setCart((prev) => prev.map((c) => c.key === key ? { ...c, quantity: c.quantity + delta } : c).filter((c) => c.quantity > 0));
+  function handleAddClick(product: Product) {
+    if (product.variants && product.variants.length > 0) {
+      setVariantPicker(product);
+    } else {
+      addToCart(product);
+    }
   }
 
-  const total = cart.reduce((s, c) => s + c.unit_price * c.quantity, 0);
-  const itemCount = cart.reduce((s, c) => s + c.quantity, 0);
-
-  function CartContents({ doCheckout }: { doCheckout: () => void }) {
-    return cart.length === 0 ? (
-      <div style={{ padding: "48px 20px", textAlign: "center" }}>
-        <p style={{ fontSize: "44px", marginBottom: "12px" }}>🛒</p>
-        <p style={{ fontSize: "15px", color: "#A89F94", fontWeight: 500 }}>Your cart is empty</p>
-        <p style={{ fontSize: "13px", color: "#C4BDB7", marginTop: "4px" }}>Add items from the menu</p>
-      </div>
-    ) : (
-      <>
-        <div style={{ padding: "8px 20px", maxHeight: "340px", overflowY: "auto" }}>
-          {cart.map((c, idx) => (
-            <div key={c.key} style={{ display: "flex", alignItems: "center", gap: "12px", padding: "12px 0", borderBottom: idx < cart.length - 1 ? "1px solid #F7F4F1" : "none" }}>
-              <div style={{ width: "44px", height: "44px", borderRadius: "11px", background: CARD_BG[idx % CARD_BG.length], display: "flex", alignItems: "center", justifyContent: "center", fontSize: "20px", flexShrink: 0 }}>🍽️</div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ fontSize: "14px", fontWeight: 600, color: "#1A1613" }}>{c.product_name}</p>
-                {c.variant_name && <p style={{ fontSize: "12px", color: "#A89F94" }}>{c.variant_name}</p>}
-                <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "6px" }}>
-                  <button onClick={() => changeQty(c.key, -1)} style={{ width: "26px", height: "26px", borderRadius: "8px", border: "1px solid #EDE8E1", background: "#F5F1EB", cursor: "pointer", fontWeight: 700, fontSize: "16px", display: "flex", alignItems: "center", justifyContent: "center", color: "#1A1613" }}>−</button>
-                  <span style={{ fontSize: "14px", fontWeight: 700, minWidth: "18px", textAlign: "center" }}>{c.quantity}</span>
-                  <button onClick={() => changeQty(c.key, 1)} style={{ width: "26px", height: "26px", borderRadius: "8px", border: "1px solid #EDE8E1", background: "#F5F1EB", cursor: "pointer", fontWeight: 700, fontSize: "16px", display: "flex", alignItems: "center", justifyContent: "center", color: "#1A1613" }}>+</button>
-                </div>
-              </div>
-              <span style={{ fontSize: "14px", fontWeight: 700, fontFamily: "monospace", color: "#1A1613", flexShrink: 0 }}>Rs {(c.unit_price * c.quantity).toLocaleString()}</span>
-            </div>
-          ))}
-        </div>
-
-        <div style={{ margin: "0 20px 12px", background: "#FFF8F0", border: "1px dashed #FCD9C8", borderRadius: "12px", padding: "11px 14px", display: "flex", alignItems: "center", gap: "8px" }}>
-          <span>🏷️</span>
-          <input placeholder="Promo code" style={{ flex: 1, border: "none", background: "transparent", fontSize: "14px", fontFamily: "inherit", outline: "none", color: "#1A1613", minWidth: 0 }} />
-          <button style={{ color: "#E8542F", fontWeight: 700, fontSize: "13px", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit" }}>Apply</button>
-        </div>
-
-        <div style={{ padding: "12px 20px", borderTop: "1px solid #F0EBE4" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", fontSize: "14px", color: "#6B6259", marginBottom: "6px" }}>
-            <span>Subtotal</span><span style={{ fontFamily: "monospace" }}>Rs {total.toLocaleString()}</span>
-          </div>
-          <div style={{ display: "flex", justifyContent: "space-between", fontSize: "14px", color: "#6B6259", marginBottom: "14px" }}>
-            <span>Delivery fee</span><span style={{ color: "#16A34A", fontWeight: 600 }}>Free</span>
-          </div>
-          <div style={{ display: "flex", justifyContent: "space-between", fontSize: "19px", fontWeight: 800, color: "#1A1613", paddingTop: "12px", borderTop: "1px solid #EDE8E1", marginBottom: "16px" }}>
-            <span>Total</span><span style={{ fontFamily: "monospace" }}>Rs {total.toLocaleString()}</span>
-          </div>
-        </div>
-
-        <button onClick={doCheckout}
-          style={{ margin: "0 20px 12px", width: "calc(100% - 40px)", background: "#E8542F", color: "#fff", border: "none", borderRadius: "14px", padding: "15px 20px", fontSize: "15px", fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between", fontFamily: "inherit" }}>
-          <span>Place order →</span>
-          <span style={{ fontFamily: "monospace", opacity: 0.85 }}>Rs {total.toLocaleString()}</span>
-        </button>
-        <p style={{ textAlign: "center", fontSize: "12px", color: "#A89F94", paddingBottom: "16px" }}>💵 Cash on delivery · No card needed</p>
-      </>
-    );
-  }
+  const fmt = (n: number) => Math.round(n).toLocaleString();
 
   return (
-    <div style={{ minHeight: "100vh", background: "#FAF8F5", fontFamily: "'DM Sans',-apple-system,sans-serif" }}>
+    <div
+      className="min-h-screen"
+      style={{
+        fontFamily: "'DM Sans','Inter',-apple-system,sans-serif",
+        background: site.backgroundColor,
+      }}
+    >
+      <SiteHeader
+        left={
+          <>
+            <button
+              onClick={onBack}
+              className="hidden md:flex items-center gap-2 px-3 py-2 rounded-full border border-[#E8DFD0] hover:bg-[#FAF8F5] transition-colors"
+            >
+              <div className="text-left">
+                <p className="text-[10px] uppercase tracking-wider text-[#6B6259] font-semibold">
+                  {orderType === "pickup" ? "PICKUP" : "DELIVERY"}
+                </p>
+                <p className="text-xs font-bold text-[#1A1613] leading-tight">{branch.name}</p>
+              </div>
+              <span style={{ color: site.primaryColor }}>▼</span>
+            </button>
 
-      {/* NAVBAR */}
-      <nav style={{ background: "#fff", borderBottom: "1px solid #EDE8E1", padding: "0 16px", height: "60px", display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, zIndex: 50 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "10px", minWidth: 0 }}>
-          <button onClick={onBack} style={{ background: "none", border: "none", fontSize: "20px", cursor: "pointer", color: "#6B6259", paddingRight: "4px" }}>←</button>
-          <div style={{ width: "34px", height: "34px", background: "#E8542F", borderRadius: "10px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "18px", flexShrink: 0 }}>🔥</div>
-          <span style={{ fontSize: "20px", fontWeight: 800, letterSpacing: "-0.03em", color: "#1A1613" }}>Tandoor</span>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "6px", background: "#F5F1EB", padding: "8px 12px", borderRadius: "10px", fontSize: "13px", fontWeight: 500, color: "#4A423B", maxWidth: "140px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-            📍 {branch.name}
-          </div>
-          <span className="tm-hide-mobile" style={{ fontSize: "13px", fontWeight: 600, color: "#6B6259", cursor: "pointer", padding: "8px 4px" }} onClick={onTrack}>
-            Track order
-          </span>
-          <button onClick={() => setShowCart(true)}
-            style={{ background: "#1A1613", border: "none", borderRadius: "12px", padding: "8px 14px", display: "flex", alignItems: "center", gap: "8px", cursor: "pointer", color: "#fff", fontSize: "14px", fontWeight: 700, position: "relative" }}>
-            <span>🛍️</span>
-            {itemCount > 0 && (
-              <span style={{ background: "#E8542F", color: "#fff", fontSize: "11px", fontWeight: 700, width: "22px", height: "22px", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", border: "2px solid #fff" }}>{itemCount}</span>
+            <button
+              onClick={() => setMobileMenuOpen(true)}
+              className="md:hidden w-10 h-10 rounded-full flex items-center justify-center hover:bg-[#FAF8F5]"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1A1613" strokeWidth="2" strokeLinecap="round">
+                <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+              </svg>
+            </button>
+
+            {branch.phone && (
+              <a
+                href={`tel:${branch.phone}`}
+                className="hidden lg:flex items-center gap-2 px-3 py-2 rounded-full border border-[#E8DFD0] hover:bg-[#FAF8F5]"
+              >
+                <span style={{ color: site.primaryColor }}>📞</span>
+                <span className="text-xs font-semibold text-[#1A1613]">{branch.phone}</span>
+              </a>
             )}
-          </button>
-        </div>
-      </nav>
+          </>
+        }
+        right={
+          <>
+            <button
+              onClick={onTrack}
+              className="hidden md:flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-semibold text-[#6B6259] hover:bg-[#FAF8F5]"
+            >
+              📦 Track
+            </button>
 
-      {/* HERO BANNER */}
-      <div style={{ background: "#1A1613", padding: "clamp(32px,5vw,56px) 20px", position: "relative", overflow: "hidden" }}>
-        <div style={{ position: "absolute", right: "-60px", top: "-60px", width: "320px", height: "320px", background: "#E8542F", opacity: 0.1, borderRadius: "50%" }} />
-        <div style={{ position: "absolute", right: "120px", bottom: "-80px", width: "240px", height: "240px", background: "#F0A93B", opacity: 0.07, borderRadius: "50%" }} />
+            <button
+              onClick={() => setShowCart(true)}
+              className="relative w-10 h-10 rounded-full flex items-center justify-center hover:bg-[#FAF8F5]"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1A1613" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
+                <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
+              </svg>
+              {cartCount > 0 && (
+                <span
+                  className="absolute -top-0.5 -right-0.5 min-w-[20px] h-5 px-1 rounded-full text-white text-[10px] font-bold flex items-center justify-center"
+                  style={{ background: site.primaryColor }}
+                >
+                  {cartCount}
+                </span>
+              )}
+            </button>
+          </>
+        }
+      />
 
-        <div style={{ position: "relative", maxWidth: "1200px", margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "24px" }}>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ display: "inline-flex", alignItems: "center", gap: "8px", background: "rgba(240,169,59,0.15)", padding: "7px 14px", borderRadius: "20px", marginBottom: "18px" }}>
-              <span style={{ width: "7px", height: "7px", background: "#4ADE80", borderRadius: "50%", display: "inline-block" }} />
-              <span style={{ color: "#F0A93B", fontSize: "12px", fontWeight: 600 }}>Open now · 30 min delivery</span>
+      {mobileMenuOpen && (
+        <div
+          className="fixed inset-0 z-50 bg-black/50 md:hidden"
+          onClick={() => setMobileMenuOpen(false)}
+        >
+          <div
+            className="absolute left-0 top-0 bottom-0 w-72 bg-white p-5 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setMobileMenuOpen(false)}
+              className="mb-6 text-2xl"
+            >✕</button>
+
+            <div className="space-y-2">
+              <button
+                onClick={() => { onBack(); setMobileMenuOpen(false); }}
+                className="w-full text-left px-4 py-3 rounded-xl bg-[#FAF8F5] hover:bg-[#F4EBD9]"
+              >
+                <p className="text-[10px] uppercase text-[#6B6259] font-semibold">
+                  {orderType === "pickup" ? "PICKUP FROM" : "DELIVERY FROM"}
+                </p>
+                <p className="text-sm font-bold text-[#1A1613]">{branch.name}</p>
+                <p className="text-xs text-[#6B6259] mt-0.5">Tap to change</p>
+              </button>
+
+              <button
+                onClick={() => { onTrack(); setMobileMenuOpen(false); }}
+                className="w-full text-left px-4 py-3 rounded-xl hover:bg-[#FAF8F5]"
+              >
+                📦 Track my order
+              </button>
+
+              {branch.phone && (
+                <a
+                  href={`tel:${branch.phone}`}
+                  className="block px-4 py-3 rounded-xl hover:bg-[#FAF8F5]"
+                >
+                  📞 {branch.phone}
+                </a>
+              )}
             </div>
-            <h1 style={{ color: "#fff", fontSize: "clamp(26px,4.5vw,42px)", fontWeight: 800, lineHeight: 1.1, letterSpacing: "-0.03em", marginBottom: "14px" }}>
-              Authentic desi<br /><span style={{ color: "#E8542F" }}>flavours</span>, delivered
-            </h1>
-            <p style={{ color: "#A89F94", fontSize: "15px", lineHeight: 1.6 }}>
-              Hot, fresh, and at your door in minutes
-            </p>
           </div>
+        </div>
+      )}
 
-          {/* Right — floating product cards (desktop only) */}
-          {products.length > 0 && (
-            <div className="tm-hide-mobile" style={{ display: "flex", gap: "14px", flexShrink: 0 }}>
-              {products.slice(0, 2).map((p, idx) => (
-                <div key={p.id} style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "18px", padding: "18px", width: "150px", textAlign: "center", marginTop: idx === 1 ? "28px" : "0" }}>
-                  <div style={{ width: "72px", height: "72px", background: CARD_BG[idx % CARD_BG.length], borderRadius: "14px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "36px", margin: "0 auto 12px", overflow: "hidden" }}>
-                    {p.image_url ? (
-                      <img src={p.image_url.startsWith("http") ? p.image_url : `${IMG}${p.image_url}`}
-                        alt={p.name}
-                        style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "14px" }}
-                        onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
-                    ) : <span>🍽️</span>}
+      {site.bannerImages.length > 0 ? (
+        <BannerCarousel banners={site.bannerImages} />
+      ) : heroProducts.length > 0 && (
+        <div className="max-w-7xl mx-auto px-3 md:px-6 pt-4 md:pt-6">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 md:gap-3">
+            {heroProducts.map((p, i) => {
+              const imgSrc = fixImageUrl(p.image_url);
+              return (
+                <div
+                  key={p.id}
+                  className={`relative rounded-2xl overflow-hidden bg-[#EDE8E1] ${
+                    i === 0 ? "col-span-2 sm:col-span-1" : ""
+                  }`}
+                  style={{ aspectRatio: i === 0 ? "2/1" : "3/4" }}
+                >
+                  {imgSrc ? (
+                    <img
+                      src={imgSrc}
+                      alt={p.name}
+                      className="w-full h-full object-cover"
+                      onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-5xl">
+                      {getCategoryEmoji(p.category)}
+                    </div>
+                  )}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                  <div className="absolute bottom-0 left-0 right-0 p-3">
+                    <p className="text-white text-xs md:text-sm font-bold truncate">{p.name}</p>
                   </div>
-                  <p style={{ color: "#fff", fontSize: "14px", fontWeight: 600, marginBottom: "4px" }}>{p.name}</p>
-                  <p style={{ color: "#E8542F", fontSize: "14px", fontWeight: 700, fontFamily: "monospace", marginBottom: "12px" }}>Rs {Number(p.price).toLocaleString()}</p>
-                  <button onClick={() => addToCart(p, null, null, Number(p.price))}
-                    style={{ width: "100%", background: "#E8542F", color: "#fff", border: "none", borderRadius: "9px", padding: "8px", fontSize: "13px", fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
-                    + Add to cart
-                  </button>
                 </div>
-              ))}
-            </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {categoryList.length > 0 && (
+        <div className="max-w-7xl mx-auto px-3 md:px-6 mt-6">
+          <div className="flex gap-3 overflow-x-auto md:grid md:grid-cols-8 lg:grid-cols-11 pb-2 -mx-3 md:mx-0 px-3 md:px-0 no-scrollbar">
+            {categoryList.map((cat) => {
+              const isActive = activeCategory === cat;
+              const imgSrc = categoryImages[cat];
+              return (
+                <button
+                  key={cat}
+                  onClick={() => {
+                    setActiveCategory(isActive ? null : cat);
+                    const el = document.getElementById(`cat-${cat}`);
+                    el?.scrollIntoView({ behavior: "smooth", block: "start" });
+                  }}
+                  className="flex flex-col items-center gap-1.5 min-w-[72px] group"
+                >
+                  <div
+                    className={`w-14 h-14 md:w-16 md:h-16 rounded-2xl flex items-center justify-center text-2xl md:text-3xl transition-all border-2 overflow-hidden ${
+                      isActive ? "text-white shadow-md" : "bg-white border-transparent"
+                    }`}
+                    style={isActive ? { background: site.primaryColor, borderColor: site.primaryColor } : undefined}
+                  >
+                    {imgSrc ? (
+                      <img src={imgSrc} alt={cat} className="w-full h-full object-cover" />
+                    ) : (
+                      getCategoryEmoji(cat)
+                    )}
+                  </div>
+                  <p
+                    className="text-[10px] md:text-xs font-semibold text-center leading-tight"
+                    style={{ color: isActive ? site.primaryColor : "#6B6259" }}
+                  >
+                    {cat}
+                  </p>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      <div className="max-w-3xl mx-auto px-3 md:px-6 mt-6">
+        <h2 className="text-center text-lg md:text-xl font-bold text-[#1A1613] mb-3">
+          What are you craving today?
+        </h2>
+        <div className="relative">
+          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xl" style={{ color: site.primaryColor }}>🔍</span>
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search for anything..."
+            className="w-full pl-12 pr-12 py-3.5 rounded-full bg-white border text-sm focus:outline-none shadow-md"
+            style={{ borderColor: search ? site.primaryColor : "#E8DFD0" }}
+          />
+          {search && (
+            <button
+              onClick={() => setSearch("")}
+              className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full text-white flex items-center justify-center"
+              style={{ background: site.primaryColor }}
+            >
+              ✕
+            </button>
           )}
         </div>
       </div>
 
-      {/* STATS BAR */}
-      <div style={{ background: "#fff", borderBottom: "1px solid #EDE8E1" }}>
-        <div style={{ maxWidth: "1200px", margin: "0 auto", display: "flex", overflowX: "auto", padding: "0 20px" }}>
-          {[
-            ["🏪", "3", "Branches"],
-            ["⚡", "30 min", "Avg delivery"],
-            ["🍽️", `${products.length}+`, "Menu items"],
-            ["⭐", "4.8", "Rating"],
-          ].map(([icon, num, label]) => (
-            <div key={String(label)} style={{ padding: "14px 22px", display: "flex", alignItems: "center", gap: "10px", borderRight: "1px solid #F0EBE4", whiteSpace: "nowrap", flexShrink: 0 }}>
-              <span style={{ fontSize: "18px" }}>{icon}</span>
-              <div>
-                <p style={{ fontSize: "17px", fontWeight: 800, color: "#1A1613", letterSpacing: "-0.02em" }}>{num}</p>
-                <p style={{ fontSize: "11px", color: "#A89F94", fontWeight: 500 }}>{label}</p>
-              </div>
-            </div>
-          ))}
+      {site.activeVoucher && (
+        <div className="max-w-3xl mx-auto px-3 md:px-6 mt-3">
+          <div className="bg-white rounded-2xl px-4 py-3 flex items-center gap-3 shadow-sm border border-[#E8DFD0]">
+            <span
+              className="w-8 h-8 rounded-full text-white flex items-center justify-center text-sm font-bold shrink-0"
+              style={{ background: site.primaryColor }}
+            >
+              %
+            </span>
+            <span className="text-sm font-bold text-[#1A1613]">
+              {site.activeVoucher.discount_type === "percent"
+                ? `Flat ${site.activeVoucher.discount_value}% Off`
+                : `Rs. ${site.activeVoucher.discount_value} Off`}
+            </span>
+            <span className="text-xs text-[#6B6259] hidden sm:inline">
+              use code <span className="font-mono font-bold">{site.activeVoucher.code}</span>
+            </span>
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* MAIN LAYOUT */}
-      <div className="tm-layout" style={{ maxWidth: "1200px", margin: "0 auto", padding: "24px 16px", display: "grid", gridTemplateColumns: "1fr 340px", gap: "24px", alignItems: "start" }}>
+      {popularItems.length > 0 && !search && (
+        <div className="max-w-7xl mx-auto px-3 md:px-6 mt-8">
+          <div className="mb-4">
+            <h2 className="text-xl md:text-2xl font-bold text-[#1A1613] flex items-center gap-2">
+              🔥 Popular Items
+            </h2>
+            <p className="text-xs md:text-sm text-[#6B6259] mt-0.5">Most ordered right now</p>
+          </div>
 
-        {/* LEFT — MENU */}
-        <div style={{ minWidth: 0 }}>
-          <div style={{ display: "flex", gap: "8px", overflowX: "auto", paddingBottom: "4px", marginBottom: "24px" }}>
-            {categories.map((cat) => (
-              <button key={cat} onClick={() => setActiveCategory(cat)}
-                style={{ display: "flex", alignItems: "center", gap: "7px", padding: "10px 16px", borderRadius: "12px", border: activeCategory === cat ? "none" : "1px solid #EDE8E1", background: activeCategory === cat ? "#1A1613" : "#fff", color: activeCategory === cat ? "#fff" : "#6B6259", fontSize: "14px", fontWeight: 500, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0, fontFamily: "inherit" }}>
-                <span>{cat === "All" ? "🍔" : getCategoryEmoji(cat)}</span> {cat}
-              </button>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+            {popularItems.slice(0, 4).map((p) => (
+              <ProductCardPopular key={p.id} product={p} onAdd={handleAddClick} />
             ))}
           </div>
+        </div>
+      )}
 
-          {loading ? (
-            <div className="tm-grid" style={{ display: "grid", gap: "12px" }}>
-              {[1, 2, 3, 4].map((i) => (
-                <div key={i} style={{ height: "220px", background: "#EDE8E1", borderRadius: "18px", opacity: 0.5 }} />
-              ))}
-            </div>
-          ) : Object.keys(grouped).length === 0 ? (
-            <div style={{ background: "#fff", border: "1px solid #EDE8E1", borderRadius: "20px", padding: "48px 24px", textAlign: "center" }}>
-              <p style={{ fontSize: "44px", marginBottom: "12px" }}>🍽️</p>
-              <p style={{ fontSize: "16px", fontWeight: 600, color: "#1A1613" }}>No items in this category</p>
-            </div>
-          ) : (
-            Object.entries(grouped).map(([cat, items], catIdx) => (
-              <div key={cat} style={{ marginBottom: "36px" }}>
-                <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: "16px" }}>
-                  <h2 style={{ fontSize: "20px", fontWeight: 700, color: "#1A1613", letterSpacing: "-0.01em" }}>
-                    {getCategoryEmoji(cat)} {cat}
-                  </h2>
-                  <span style={{ fontSize: "13px", color: "#E8542F", fontWeight: 600 }}>{items.length} items</span>
-                </div>
-
-                {catIdx === 0 ? (
-                  <div className="tm-grid" style={{ display: "grid", gap: "12px" }}>
-                    {items.map((p, idx) => (
-                      <div key={p.id} style={{ background: "#fff", borderRadius: "18px", border: "1px solid #EDE8E1", overflow: "hidden", display: "flex", flexDirection: "column" }}>
-                        <div style={{ height: "130px", background: p.image_url ? "#F5F1EB" : CARD_BG[idx % CARD_BG.length], display: "flex", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden" }}>
-                          {p.image_url ? (
-                            <img src={p.image_url.startsWith("http") ? p.image_url : `${IMG}${p.image_url}`}
-                              alt={p.name}
-                              style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                              onError={(e) => {
-                                const img = e.target as HTMLImageElement;
-                                img.style.display = "none";
-                                const parent = img.parentElement;
-                                if (parent) {
-                                  parent.style.background = CARD_BG[idx % CARD_BG.length];
-                                  const span = document.createElement("span");
-                                  span.textContent = "🍽️";
-                                  span.style.fontSize = "52px";
-                                  parent.appendChild(span);
-                                }
-                              }} />
-                          ) : <span style={{ fontSize: "52px" }}>🍽️</span>}
-                          {idx === 0 && <span style={{ position: "absolute", top: "10px", left: "10px", background: "#E8542F", color: "#fff", fontSize: "9px", fontWeight: 700, padding: "4px 9px", borderRadius: "7px", letterSpacing: "0.03em" }}>BESTSELLER</span>}
-                          {idx === 1 && <span style={{ position: "absolute", top: "10px", left: "10px", background: "#1A1613", color: "#fff", fontSize: "9px", fontWeight: 700, padding: "4px 9px", borderRadius: "7px" }}>NEW</span>}
-                        </div>
-                        <div style={{ padding: "14px", flex: 1, display: "flex", flexDirection: "column" }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: "4px", marginBottom: "4px" }}>
-                            <span style={{ color: "#F0A93B", fontSize: "12px" }}>★★★★★</span>
-                            <span style={{ fontSize: "11px", color: "#A89F94" }}>4.8</span>
-                          </div>
-                          <p style={{ fontSize: "14px", fontWeight: 600, color: "#1A1613", marginBottom: "10px", flex: 1 }}>{p.name}</p>
-                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px" }}>
-                            <span style={{ fontSize: "15px", fontWeight: 700, color: "#1A1613", fontFamily: "monospace" }}>Rs {Number(p.price).toLocaleString()}</span>
-                            {p.variants.length === 0 ? (
-                              <button onClick={() => addToCart(p, null, null, Number(p.price))}
-                                style={{ width: "32px", height: "32px", background: "#1A1613", border: "none", borderRadius: "9px", color: "#fff", fontSize: "20px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>+</button>
-                            ) : (
-                              <button onClick={() => setExpandedId(expandedId === p.id ? null : p.id)}
-                                style={{ background: "#FFF0E8", color: "#E8542F", border: "1px solid #FCD9C8", borderRadius: "9px", padding: "6px 10px", fontSize: "12px", fontWeight: 600, cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}>Options</button>
-                            )}
-                          </div>
-                          {expandedId === p.id && p.variants.length > 0 && (
-                            <div style={{ marginTop: "10px", display: "flex", flexDirection: "column", gap: "6px" }}>
-                              {p.variants.map((v) => {
-                                const tp = Number(p.price) + Number(v.price);
-                                return (
-                                  <button key={v.id} onClick={() => { addToCart(p, v.id, v.name, tp); setExpandedId(null); }}
-                                    style={{ display: "flex", justifyContent: "space-between", padding: "7px 10px", background: "#FAF8F5", border: "1px solid #EDE8E1", borderRadius: "9px", fontSize: "12px", cursor: "pointer", fontFamily: "inherit" }}>
-                                    <span style={{ color: "#1A1613", fontWeight: 500 }}>{v.name}</span>
-                                    <span style={{ color: "#E8542F", fontWeight: 700, fontFamily: "monospace" }}>Rs {tp.toLocaleString()}</span>
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                    {items.map((p, idx) => (
-                      <div key={p.id} style={{ background: "#fff", borderRadius: "18px", border: "1px solid #EDE8E1", padding: "14px", display: "flex", gap: "14px" }}>
-                        <div style={{ width: "80px", height: "80px", borderRadius: "14px", background: p.image_url ? "#F5F1EB" : CARD_BG[idx % CARD_BG.length], display: "flex", alignItems: "center", justifyContent: "center", fontSize: "36px", flexShrink: 0, overflow: "hidden" }}>
-                          {p.image_url ? (
-                            <img src={p.image_url.startsWith("http") ? p.image_url : `${IMG}${p.image_url}`}
-                              alt={p.name}
-                              style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "14px" }}
-                              onError={(e) => {
-                                const img = e.target as HTMLImageElement;
-                                img.style.display = "none";
-                                const parent = img.parentElement;
-                                if (parent) {
-                                  parent.style.background = CARD_BG[idx % CARD_BG.length];
-                                  const span = document.createElement("span");
-                                  span.textContent = "🍽️";
-                                  span.style.fontSize = "36px";
-                                  parent.appendChild(span);
-                                }
-                              }} />
-                          ) : <span>🍽️</span>}
-                        </div>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ display: "flex", alignItems: "start", justifyContent: "space-between", gap: "8px", marginBottom: "4px" }}>
-                            <p style={{ fontSize: "15px", fontWeight: 600, color: "#1A1613" }}>{p.name}</p>
-                            {idx === 0 && <span style={{ fontSize: "10px", fontWeight: 700, color: "#16A34A", background: "#DCFCE7", padding: "3px 8px", borderRadius: "6px", whiteSpace: "nowrap" }}>SPICY</span>}
-                          </div>
-                          <div style={{ display: "flex", alignItems: "center", gap: "4px", marginBottom: "10px" }}>
-                            <span style={{ color: "#F0A93B", fontSize: "12px" }}>★★★★★</span>
-                            <span style={{ fontSize: "12px", color: "#A89F94" }}>4.9</span>
-                          </div>
-                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px" }}>
-                            <span style={{ fontSize: "16px", fontWeight: 700, color: "#1A1613", fontFamily: "monospace" }}>Rs {Number(p.price).toLocaleString()}</span>
-                            {p.variants.length === 0 ? (
-                              <button onClick={() => addToCart(p, null, null, Number(p.price))}
-                                style={{ background: "#FFF0E8", color: "#E8542F", border: "1px solid #FCD9C8", borderRadius: "10px", padding: "8px 16px", fontSize: "13px", fontWeight: 600, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}>
-                                + Add
-                              </button>
-                            ) : (
-                              <button onClick={() => setExpandedId(expandedId === p.id ? null : p.id)}
-                                style={{ background: "#FFF0E8", color: "#E8542F", border: "1px solid #FCD9C8", borderRadius: "10px", padding: "8px 16px", fontSize: "13px", fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
-                                {expandedId === p.id ? "Close" : "Choose"}
-                              </button>
-                            )}
-                          </div>
-                          {expandedId === p.id && p.variants.length > 0 && (
-                            <div style={{ marginTop: "10px", display: "flex", flexDirection: "column", gap: "6px" }}>
-                              {p.variants.map((v) => {
-                                const tp = Number(p.price) + Number(v.price);
-                                return (
-                                  <button key={v.id} onClick={() => { addToCart(p, v.id, v.name, tp); setExpandedId(null); }}
-                                    style={{ display: "flex", justifyContent: "space-between", padding: "8px 12px", background: "#FAF8F5", border: "1px solid #EDE8E1", borderRadius: "10px", fontSize: "13px", cursor: "pointer", fontFamily: "inherit" }}>
-                                    <span style={{ color: "#1A1613", fontWeight: 500 }}>{v.name}</span>
-                                    <span style={{ color: "#E8542F", fontWeight: 700, fontFamily: "monospace" }}>Rs {tp.toLocaleString()}</span>
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    ))}
+      <div className="max-w-7xl mx-auto px-3 md:px-6 mt-10 pb-32">
+        {loading ? (
+          <div className="text-center py-20 text-[#6B6259]">Loading menu...</div>
+        ) : categoryList.length === 0 ? (
+          <div className="text-center py-20 text-[#6B6259]">
+            {search ? "No items match your search" : "No items available yet"}
+          </div>
+        ) : (
+          categoryList.map((cat) => {
+            const catImg = categoryImages[cat];
+            return (
+            <div key={cat} id={`cat-${cat}`} className="mb-10 scroll-mt-24">
+              <div
+                className="relative h-24 md:h-32 rounded-3xl mb-5 overflow-hidden flex items-center justify-center"
+                style={!catImg ? { background: `linear-gradient(to right, ${site.primaryColor}, ${site.secondaryColor})` } : undefined}
+              >
+                {catImg && (
+                  <img src={catImg} alt="" className="absolute inset-0 w-full h-full object-cover" />
+                )}
+                <div className="absolute inset-0 bg-black/25" />
+                {!catImg && (
+                  <div className="absolute inset-0 opacity-20">
+                    <div className="absolute bottom-0 left-0 right-0 h-full flex items-end gap-1 px-4">
+                      {[...Array(20)].map((_, i) => (
+                        <div key={i} className="flex-1 bg-white" style={{ height: `${20 + (i * 7) % 50}%` }} />
+                      ))}
+                    </div>
                   </div>
                 )}
+                <h2
+                  className="relative text-3xl md:text-5xl font-bold text-white tracking-wide"
+                  style={{ fontFamily: "'Playfair Display','DM Sans',serif" }}
+                >
+                  {cat}
+                </h2>
               </div>
-            ))
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
+                {categoryGroups[cat].map((p) => (
+                  <ProductCardMain key={p.id} product={p} onAdd={handleAddClick} />
+                ))}
+              </div>
+            </div>
+            );
+          })
+        )}
+      </div>
+
+      {(showCart || cartCount > 0) && (
+        <CartSidebar
+          cart={cart}
+          onUpdateQty={updateQty}
+          onClose={() => setShowCart(false)}
+          onCheckout={() => onCheckout(cart)}
+          subtotal={subtotal}
+          discountAmt={discountAmt}
+          total={total}
+          popularItems={popularItems}
+          onAdd={handleAddClick}
+          orderType={orderType}
+          isOpen={showCart}
+          cartCount={cartCount}
+        />
+      )}
+
+      {variantPicker && (
+        <div
+          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-4"
+          onClick={() => setVariantPicker(null)}
+        >
+          <div
+            className="bg-white rounded-3xl w-full max-w-md p-6 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-lg font-bold text-[#1A1613] mb-1">Choose a size</h3>
+            <p className="text-sm text-[#6B6259] mb-4">{variantPicker.name}</p>
+            <div className="space-y-2">
+              {variantPicker.variants?.map((v) => {
+                const totalPrice = Number(variantPicker.price) + Number(v.price);
+                return (
+                  <button
+                    key={v.id}
+                    onClick={() => addToCart(variantPicker, v)}
+                    disabled={v.is_available === false}
+                    className="w-full flex items-center justify-between px-4 py-3 rounded-xl border-2 border-[#E8DFD0] hover:border-[#E8542F] active:scale-[0.98] disabled:opacity-40 transition-all"
+                  >
+                    <span className="font-semibold text-[#1A1613]">{v.name}</span>
+                    <span className="font-bold text-[#1E293B]">Rs. {fmt(totalPrice)}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <button
+              onClick={() => setVariantPicker(null)}
+              className="w-full mt-4 py-3 rounded-xl border border-[#E8DFD0] text-[#6B6259] font-semibold hover:bg-[#FAF8F5]"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {cartCount > 0 && !showCart && (
+        <button
+          onClick={() => setShowCart(true)}
+          className="fixed bottom-4 right-4 md:hidden z-40 bg-[#E8542F] text-white px-5 py-3.5 rounded-full shadow-2xl flex items-center gap-3 font-semibold active:scale-95 transition-transform"
+        >
+          <span className="w-6 h-6 rounded-full bg-white text-[#E8542F] flex items-center justify-center text-sm font-bold">
+            {cartCount}
+          </span>
+          <span>View Cart</span>
+          <span className="font-bold">Rs. {fmt(total)}</span>
+        </button>
+      )}
+
+      <style jsx global>{`
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { scrollbar-width: none; }
+      `}</style>
+    </div>
+  );
+}
+
+function ProductCardMain({
+  product,
+  onAdd,
+}: {
+  product: Product;
+  onAdd: (p: Product) => void;
+}) {
+  const fmt = (n: number) => Math.round(n).toLocaleString();
+  const hasVariants = product.variants && product.variants.length > 0;
+  const basePrice = Number(product.price);
+  const minVariantPrice = hasVariants
+    ? basePrice + Math.min(...product.variants!.map((v) => Number(v.price)))
+    : basePrice;
+  const imgSrc = fixImageUrl(product.image_url);
+
+  return (
+    <div className="bg-white rounded-2xl overflow-hidden shadow-sm border border-[#E8DFD0] hover:shadow-md transition-shadow relative">
+      {(product as any).is_new && (
+        <span className="absolute top-2 right-2 z-10 bg-[#F0A93B] text-[#1A1613] text-[10px] font-bold px-2 py-1 rounded">
+          New Arrival
+        </span>
+      )}
+
+      <div className="flex items-stretch p-3 gap-3">
+        <div className="flex-1 min-w-0 flex flex-col">
+          <h3 className="font-bold text-[#1A1613] text-sm md:text-base leading-tight">
+            {product.name}
+          </h3>
+          {product.description && (
+            <p className="text-xs text-[#6B6259] mt-1 line-clamp-2 leading-relaxed">
+              {product.description}
+            </p>
+          )}
+          <div className="mt-auto pt-3">
+            <p className="text-[#1E293B] font-bold text-base">
+              {hasVariants && <span className="text-xs font-normal text-[#6B6259]">From </span>}
+              Rs. {fmt(minVariantPrice)}
+            </p>
+          </div>
+        </div>
+
+        <div className="relative w-24 h-24 md:w-28 md:h-28 rounded-xl overflow-hidden bg-[#F5F1EB] flex-shrink-0">
+          {imgSrc ? (
+            <img
+              src={imgSrc}
+              alt={product.name}
+              className="w-full h-full object-cover"
+              onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-3xl">
+              {getCategoryEmoji(product.category)}
+            </div>
+          )}
+          <button
+            onClick={() => onAdd(product)}
+            className="absolute bottom-1 right-1 w-8 h-8 rounded-full bg-[#E8542F] text-white flex items-center justify-center shadow-lg font-bold text-lg active:scale-90 transition-transform"
+          >
+            +
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ProductCardPopular({
+  product,
+  onAdd,
+}: {
+  product: Product;
+  onAdd: (p: Product) => void;
+}) {
+  const fmt = (n: number) => Math.round(n).toLocaleString();
+  const hasVariants = product.variants && product.variants.length > 0;
+  const basePrice = Number(product.price);
+  const minVariantPrice = hasVariants
+    ? basePrice + Math.min(...product.variants!.map((v) => Number(v.price)))
+    : basePrice;
+  const imgSrc = fixImageUrl(product.image_url);
+
+  return (
+    <div className="bg-white rounded-2xl overflow-hidden shadow-sm border border-[#E8DFD0]">
+      <div className="relative aspect-square bg-[#F5F1EB]">
+        {imgSrc ? (
+          <img
+            src={imgSrc}
+            alt={product.name}
+            className="w-full h-full object-cover"
+            onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-5xl">
+            {getCategoryEmoji(product.category)}
+          </div>
+        )}
+        <button
+          onClick={() => onAdd(product)}
+          className="absolute bottom-2 right-2 w-9 h-9 rounded-full bg-[#E8542F] text-white flex items-center justify-center shadow-lg font-bold text-lg active:scale-90"
+        >
+          +
+        </button>
+      </div>
+      <div className="p-2.5 md:p-3">
+        <h4 className="font-bold text-[#1A1613] text-sm truncate">{product.name}</h4>
+        <p className="text-[#1E293B] font-bold text-sm mt-1">
+          {hasVariants && <span className="text-xs font-normal text-[#6B6259]">From </span>}
+          Rs. {fmt(minVariantPrice)}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function CartSidebar({
+  cart, onUpdateQty, onClose, onCheckout,
+  subtotal, discountAmt, total, popularItems, onAdd,
+  orderType, isOpen, cartCount,
+}: any) {
+  const fmt = (n: number) => Math.round(n).toLocaleString();
+  const savedAmt = discountAmt;
+
+  if (!isOpen && cartCount === 0) return null;
+
+  return (
+    <>
+      {isOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/50 md:hidden"
+          onClick={onClose}
+        />
+      )}
+
+      <div
+        className={`fixed top-0 right-0 bottom-0 z-40 w-full md:w-96 bg-white shadow-2xl overflow-y-auto ${
+          isOpen ? "translate-x-0" : "translate-x-full md:translate-x-0"
+        } transition-transform`}
+        style={{ display: isOpen || cartCount > 0 ? "flex" : "none", flexDirection: "column" }}
+      >
+        <div className="bg-[#E8542F] text-white px-5 py-4 flex items-center justify-between sticky top-0 z-10">
+          <div className="flex items-center gap-2">
+            <span className="text-xl">🛒</span>
+            <h3 className="font-bold text-lg">Your Cart</h3>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center"
+          >
+            ✕
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto">
+          {cart.length === 0 ? (
+            <div className="px-5 py-20 text-center">
+              <div className="text-6xl mb-3">🛒</div>
+              <p className="text-[#6B6259] text-sm">Your cart is empty</p>
+            </div>
+          ) : (
+            <div className="px-4 py-4 space-y-3">
+              {cart.map((item: CartItem) => {
+                const imgSrc = fixImageUrl(item.image_url);
+                return (
+                  <div key={item.key} className="bg-white border border-[#E8DFD0] rounded-2xl p-3 flex items-center gap-3">
+                    <div className="w-14 h-14 rounded-xl bg-[#F5F1EB] overflow-hidden flex-shrink-0">
+                      {imgSrc ? (
+                        <img src={imgSrc} alt={item.product_name} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-xl">🍽️</div>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-bold text-sm text-[#1A1613] truncate">{item.product_name}</p>
+                      {item.variant_name && (
+                        <span className="inline-block text-[10px] font-semibold px-2 py-0.5 rounded bg-[#FFE8E0] text-[#E8542F] mt-0.5">
+                          {item.variant_name}
+                        </span>
+                      )}
+                      <p className="text-sm font-bold text-[#1E293B] mt-1">
+                        Rs. {fmt(item.unit_price * item.quantity)}
+                      </p>
+                    </div>
+                    <div className="flex flex-col items-end gap-1">
+                      <button
+                        onClick={() => onUpdateQty(item.key, -item.quantity)}
+                        className="w-7 h-7 rounded-full text-[#E8542F] border border-[#E8DFD0] hover:bg-[#FFE8E0] flex items-center justify-center text-xs"
+                      >🗑</button>
+                      <div className="flex items-center gap-1 border border-[#E8DFD0] rounded-full px-1 py-0.5">
+                        <button
+                          onClick={() => onUpdateQty(item.key, -1)}
+                          className="w-6 h-6 rounded-full flex items-center justify-center text-[#E8542F] font-bold"
+                        >−</button>
+                        <span className="text-xs font-bold text-[#1A1613] min-w-[16px] text-center">
+                          {item.quantity}
+                        </span>
+                        <button
+                          onClick={() => onUpdateQty(item.key, 1)}
+                          className="w-6 h-6 rounded-full flex items-center justify-center text-[#E8542F] font-bold"
+                        >+</button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+
+              {popularItems.length > 0 && (
+                <div className="mt-6">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="w-1 h-4 bg-[#E8542F] rounded-full" />
+                    <h4 className="text-sm font-bold text-[#1A1613]">🔥 Popular with your order</h4>
+                  </div>
+                  <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar -mx-1 px-1">
+                    {popularItems.slice(0, 6).map((p: Product) => {
+                      const imgSrc = fixImageUrl(p.image_url);
+                      return (
+                        <div key={p.id} className="w-28 flex-shrink-0 bg-white border border-[#E8DFD0] rounded-xl overflow-hidden">
+                          <div className="relative aspect-square bg-[#F5F1EB]">
+                            {imgSrc ? (
+                              <img src={imgSrc} alt={p.name} className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-3xl">
+                                {getCategoryEmoji(p.category)}
+                              </div>
+                            )}
+                            <button
+                              onClick={() => onAdd(p)}
+                              className="absolute bottom-1 right-1 w-6 h-6 rounded-full bg-[#E8542F] text-white flex items-center justify-center text-xs font-bold"
+                            >+</button>
+                          </div>
+                          <div className="p-2">
+                            <p className="text-xs font-bold text-[#1E293B]">Rs. {fmt(Number(p.price))}</p>
+                            <p className="text-[10px] text-[#6B6259] truncate">{p.name}</p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              <div className="bg-[#FFF5F1] border border-[#FFD5C7] rounded-2xl p-4 mt-4">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2 text-sm text-[#1A1613]">
+                    <span>🧮</span> Total
+                  </div>
+                  <span className="font-bold text-[#1A1613]">Rs. {fmt(subtotal)}</span>
+                </div>
+                {discountAmt > 0 && (
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2 text-sm text-[#16A34A]">
+                      <span>%</span> Discount
+                    </div>
+                    <span className="font-bold text-[#16A34A]">− Rs. {fmt(discountAmt)}</span>
+                  </div>
+                )}
+                <div className="h-px bg-[#FFD5C7] my-3" />
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-[#1A1613] text-base">Grand Total</span>
+                  <span className="font-bold text-[#E8542F] text-xl">Rs. {fmt(total)}</span>
+                </div>
+              </div>
+
+              {savedAmt > 0 && (
+                <div className="bg-[#E6F2EF] border border-[#C7E2DA] rounded-2xl px-4 py-2.5 flex items-center gap-2 mt-3">
+                  <span className="w-6 h-6 rounded-full bg-[#16A34A] text-white flex items-center justify-center text-xs">%</span>
+                  <span className="text-sm text-[#16A34A] font-semibold">
+                    Yay! You saved Rs. {fmt(savedAmt)}
+                  </span>
+                </div>
+              )}
+            </div>
           )}
         </div>
 
-        {/* RIGHT — DESKTOP CART */}
-        <div className="tm-sidebar" style={{ position: "sticky", top: "76px" }}>
-          <div style={{ background: "#fff", borderRadius: "20px", border: "1px solid #EDE8E1", overflow: "hidden" }}>
-            <div style={{ padding: "18px 20px", borderBottom: "1px solid #F0EBE4", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <h3 style={{ fontSize: "17px", fontWeight: 700 }}>🛍️ Your order</h3>
-              <span style={{ fontSize: "12px", color: "#A89F94" }}>{branch.name}</span>
-            </div>
-            <CartContents doCheckout={() => onCheckout(cart)} />
+        {cart.length > 0 && (
+          <div className="border-t border-[#E8DFD0] p-4 sticky bottom-0 bg-white">
+            <button
+              onClick={onCheckout}
+              className="w-full py-3.5 rounded-full bg-gradient-to-r from-[#E8542F] to-[#D64822] text-white font-bold text-base flex items-center justify-center gap-2 shadow-lg active:scale-[0.98] transition-transform"
+            >
+              Checkout <span>→</span>
+            </button>
+            <p className="text-center text-xs text-[#6B6259] mt-3">
+              Your order will be ready for{" "}
+              <span className="font-semibold text-[#1A1613]">
+                {orderType === "pickup" ? "pickup" : "delivery"}
+              </span>{" "}
+              in <span className="font-semibold text-[#E8542F]">45 minutes</span>
+            </p>
           </div>
-        </div>
+        )}
       </div>
-
-      {/* MOBILE STICKY BAR */}
-      {itemCount > 0 && (
-        <div className="tm-mobile-bar" style={{ position: "fixed", bottom: 0, left: 0, right: 0, padding: "12px 16px", background: "rgba(250,248,245,0.96)", backdropFilter: "blur(12px)", borderTop: "1px solid #EDE8E1", zIndex: 40 }}>
-          <button onClick={() => setShowCart(true)}
-            style={{ width: "100%", background: "#1A1613", color: "#fff", border: "none", borderRadius: "16px", padding: "14px 20px", display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer", fontFamily: "inherit" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-              <span style={{ background: "#E8542F", color: "#fff", fontSize: "12px", fontWeight: 700, width: "24px", height: "24px", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center" }}>{itemCount}</span>
-              <span style={{ fontSize: "15px", fontWeight: 600 }}>View order</span>
-            </div>
-            <span style={{ fontSize: "16px", fontWeight: 800, fontFamily: "monospace" }}>Rs {total.toLocaleString()}</span>
-          </button>
-        </div>
-      )}
-
-      {/* MOBILE DRAWER */}
-      {showCart && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 100, display: "flex", alignItems: "flex-end" }} onClick={() => setShowCart(false)}>
-          <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.5)" }} />
-          <div style={{ position: "relative", background: "#fff", borderRadius: "24px 24px 0 0", width: "100%", maxWidth: "520px", margin: "0 auto", maxHeight: "90vh", overflowY: "auto" }} onClick={(e) => e.stopPropagation()}>
-            <div style={{ padding: "16px 20px", borderBottom: "1px solid #F0EBE4", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <h3 style={{ fontSize: "18px", fontWeight: 700 }}>🛍️ Your order</h3>
-              <button onClick={() => setShowCart(false)} style={{ background: "#F5F1EB", border: "none", borderRadius: "9px", padding: "7px 14px", fontSize: "14px", cursor: "pointer", fontFamily: "inherit", color: "#6B6259" }}>Close</button>
-            </div>
-            <CartContents doCheckout={() => { setShowCart(false); onCheckout(cart); }} />
-          </div>
-        </div>
-      )}
-
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap');
-        .tm-hide-mobile { display: flex; }
-        .tm-layout { grid-template-columns: 1fr 340px; }
-        .tm-sidebar { display: block; }
-        .tm-mobile-bar { display: none; }
-        .tm-grid { grid-template-columns: repeat(2, 1fr); }
-        @media (min-width: 640px) {
-          .tm-grid { grid-template-columns: repeat(3, 1fr); }
-        }
-        @media (max-width: 900px) {
-          .tm-hide-mobile { display: none !important; }
-          .tm-layout { grid-template-columns: 1fr !important; padding-bottom: 100px !important; }
-          .tm-sidebar { display: none !important; }
-          .tm-mobile-bar { display: block !important; }
-        }
-      `}</style>
-    </div>
-  ); 
+    </>
+  );
 }

@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import axios from "axios";
 import { api } from "@/lib/api";
 
-type Category = { name: string; count: number };
+type Category = { name: string; count: number; image_url?: string | null };
 type Mode = "select" | "new" | "manage" | "rename" | "confirmDelete";
 
 function errMsg(err: unknown) {
@@ -26,12 +26,14 @@ export default function CategorySelect({
   const [loading, setLoading] = useState(false);
   const [mode, setMode] = useState<Mode>("select");
   const [newCategory, setNewCategory] = useState("");
+  const [newCategoryImage, setNewCategoryImage] = useState<File | null>(null);
   const [duplicateWarning, setDuplicateWarning] = useState("");
 
   const [selectedCat, setSelectedCat] = useState<Category | null>(null);
   const [renameValue, setRenameValue] = useState("");
   const [busy, setBusy] = useState(false);
   const [mgmtError, setMgmtError] = useState("");
+  const [pictureTargetName, setPictureTargetName] = useState<string | null>(null);
 
   async function loadCategories() {
     if (!branchId) { setCategories([]); return; }
@@ -56,16 +58,34 @@ export default function CategorySelect({
     onChange(val);
   }
 
-  function handleSaveNew() {
+  async function handleSaveNew() {
     if (!newCategory.trim() || duplicateWarning) return;
     const name = newCategory.trim();
     onChange(name);
+
+    if (newCategoryImage && branchId) {
+      setBusy(true);
+      try {
+        const formData = new FormData();
+        formData.append("name", name);
+        formData.append("image", newCategoryImage);
+        await api.post(`/products/categories/${branchId}/image`, formData, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+      } catch {
+        // Non-fatal — category still gets created without the picture.
+      } finally {
+        setBusy(false);
+      }
+    }
+
     setCategories(prev => [...prev, { name, count: 0 }].sort((a, b) => a.name.localeCompare(b.name)));
-    setMode("select"); setNewCategory(""); setDuplicateWarning("");
+    setMode("select"); setNewCategory(""); setNewCategoryImage(null); setDuplicateWarning("");
+    await loadCategories();
   }
 
   function handleCancelNew() {
-    setMode("select"); setNewCategory(""); setDuplicateWarning(""); onChange("");
+    setMode("select"); setNewCategory(""); setNewCategoryImage(null); setDuplicateWarning(""); onChange("");
   }
 
   function openRename(cat: Category) {
@@ -114,6 +134,38 @@ export default function CategorySelect({
     }
   }
 
+  async function handlePictureUpload(cat: Category, file: File) {
+    if (!branchId) return;
+    setBusy(true); setMgmtError("");
+    try {
+      const formData = new FormData();
+      formData.append("name", cat.name);
+      formData.append("image", file);
+      await api.post(`/products/categories/${branchId}/image`, formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      await loadCategories();
+    } catch (err) {
+      setMgmtError(errMsg(err));
+    } finally {
+      setBusy(false);
+      setPictureTargetName(null);
+    }
+  }
+
+  async function handlePictureRemove(cat: Category) {
+    if (!branchId) return;
+    setBusy(true); setMgmtError("");
+    try {
+      await api.delete(`/products/categories/${branchId}/${encodeURIComponent(cat.name)}/image`);
+      await loadCategories();
+    } catch (err) {
+      setMgmtError(errMsg(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   if (!branchId) {
     return (
       <div className="border border-[#D0D3CB] rounded-md px-2.5 py-1.5 text-sm text-[#9B9F98] bg-[#F5F6F4]">
@@ -133,9 +185,9 @@ export default function CategorySelect({
             onChange={(e) => handleNewCategoryChange(e.target.value)}
             className={`border rounded-md px-2.5 py-1.5 text-sm flex-1 ${duplicateWarning ? "border-[#F0C9C2]" : "border-[#D0D3CB]"}`}
           />
-          <button type="button" onClick={handleSaveNew} disabled={!newCategory.trim() || !!duplicateWarning}
+          <button type="button" onClick={handleSaveNew} disabled={!newCategory.trim() || !!duplicateWarning || busy}
             className="text-xs px-3 py-1.5 rounded-md bg-[#2F7D6B] text-white hover:bg-[#27695A] disabled:opacity-40">
-            Save
+            {busy ? "..." : "Save"}
           </button>
           <button type="button" onClick={handleCancelNew}
             className="text-xs px-3 py-1.5 rounded-md border border-[#D0D3CB] text-[#494D46] hover:bg-[#F5F6F4]">
@@ -143,6 +195,17 @@ export default function CategorySelect({
           </button>
         </div>
         {duplicateWarning && <p className="text-xs text-[#9E3527]">⚠ {duplicateWarning}</p>}
+
+        <label className="flex items-center gap-2 text-xs text-[#6B7068] cursor-pointer">
+          <span>🖼️ Category picture (optional):</span>
+          <input
+            type="file"
+            accept="image/*"
+            onChange={(e) => setNewCategoryImage(e.target.files?.[0] ?? null)}
+            className="text-xs"
+          />
+        </label>
+        {newCategoryImage && <p className="text-[11px] text-[#2F7D6B]">Selected: {newCategoryImage.name}</p>}
       </div>
     );
   }
@@ -163,22 +226,62 @@ export default function CategorySelect({
         {categories.length === 0 ? (
           <p className="px-3 py-6 text-sm text-[#6B7068] text-center">No categories yet</p>
         ) : (
-          <ul className="max-h-64 overflow-y-auto">
-            {categories.map((cat) => (
-              <li key={cat.name} className="px-3 py-2 border-b border-[#F0F1EE] last:border-0 flex items-center justify-between gap-2">
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm text-[#1B1D1E] truncate">{cat.name}</p>
-                  <p className="text-[11px] text-[#6B7068]">{cat.count} product{cat.count !== 1 ? "s" : ""}</p>
-                </div>
-                <div className="flex gap-1 shrink-0">
-                  <button type="button" onClick={() => openRename(cat)} title="Rename"
-                    className="text-xs px-2 py-1 rounded border border-[#D0D3CB] text-[#494D46] hover:bg-[#F5F6F4]">✏️</button>
-                  <button type="button" onClick={() => openConfirmDelete(cat)} title="Delete"
-                    className="text-xs px-2 py-1 rounded border border-[#F0C9C2] text-[#9E3527] hover:bg-[#FBEAE7]">🗑</button>
-                </div>
-              </li>
-            ))}
-          </ul>
+          <div className="max-h-80 overflow-y-auto overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="sticky top-0 bg-[#F5F6F4]">
+                <tr className="text-left text-[10px] text-[#6B7068] uppercase tracking-wide border-b border-[#E3E5E0]">
+                  <th className="px-3 py-2 font-medium w-9"></th>
+                  <th className="px-2 py-2 font-medium">Name</th>
+                  <th className="px-2 py-2 font-medium">Products</th>
+                  <th className="px-3 py-2 font-medium text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {categories.map((cat) => (
+                  <tr key={cat.name} className="border-b border-[#F0F1EE] last:border-0">
+                    <td className="px-3 py-2">
+                      <div className="w-8 h-8 rounded-md bg-[#F5F6F4] border border-[#E3E5E0] overflow-hidden shrink-0 flex items-center justify-center">
+                        {cat.image_url ? (
+                          <img src={cat.image_url} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                          <span className="text-sm">🍽️</span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-2 py-2 text-[#1B1D1E] whitespace-nowrap">{cat.name}</td>
+                    <td className="px-2 py-2 text-[#6B7068] whitespace-nowrap">
+                      {cat.count} product{cat.count !== 1 ? "s" : ""}
+                    </td>
+                    <td className="px-3 py-2">
+                      <div className="flex gap-1 items-center justify-end">
+                        {pictureTargetName === cat.name ? (
+                          <input
+                            autoFocus
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => { const f = e.target.files?.[0]; if (f) handlePictureUpload(cat, f); }}
+                            onBlur={() => setPictureTargetName(null)}
+                            className="text-[11px] w-28"
+                          />
+                        ) : (
+                          <button type="button" onClick={() => setPictureTargetName(cat.name)} title="Set picture" disabled={busy}
+                            className="text-xs px-2 py-1 rounded border border-[#D0D3CB] text-[#494D46] hover:bg-[#F5F6F4] disabled:opacity-40">🖼️</button>
+                        )}
+                        {cat.image_url && (
+                          <button type="button" onClick={() => handlePictureRemove(cat)} title="Remove picture" disabled={busy}
+                            className="text-xs px-2 py-1 rounded border border-[#D0D3CB] text-[#494D46] hover:bg-[#F5F6F4] disabled:opacity-40">🚫</button>
+                        )}
+                        <button type="button" onClick={() => openRename(cat)} title="Rename" disabled={busy}
+                          className="text-xs px-2 py-1 rounded border border-[#D0D3CB] text-[#494D46] hover:bg-[#F5F6F4] disabled:opacity-40">✏️</button>
+                        <button type="button" onClick={() => openConfirmDelete(cat)} title="Delete" disabled={busy}
+                          className="text-xs px-2 py-1 rounded border border-[#F0C9C2] text-[#9E3527] hover:bg-[#FBEAE7] disabled:opacity-40">🗑</button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
     );

@@ -18,7 +18,8 @@ export type SectionKey =
   | "rider-history"
   | "cash-submissions"
   | "cash-report"
-  | "reports";
+  | "reports"
+  | "website";
 
 type SectionDef = { key: SectionKey; label: string };
 
@@ -33,6 +34,7 @@ export const SECTIONS_BY_ROLE: Record<Role, SectionDef[]> = {
     { key: "receipts", label: "Receipts" },
     { key: "cash-report", label: "Cash report" },
     { key: "reports", label: "Reports" },
+    { key: "website", label: "Website" },
     { key: "passwords", label: "Passwords" },
   ],
   branch_admin: [

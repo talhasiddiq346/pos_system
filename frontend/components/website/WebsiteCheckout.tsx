@@ -1,231 +1,530 @@
 "use client";
 import { useState } from "react";
 import axios from "axios";
+import { api } from "@/lib/api";
+import { useSiteSettings } from "@/lib/useSiteSettings";
+import SiteHeader from "./SiteHeader";
 
+type Branch = { id: number; name: string; address: string; phone?: string };
 type CartItem = {
-  key: string; product_id: number; product_name: string;
-  variant_id: number | null; variant_name: string | null;
-  unit_price: number; quantity: number;
+  key: string;
+  product_id: number;
+  product_name: string;
+  variant_id: number | null;
+  variant_name: string | null;
+  unit_price: number;
+  quantity: number;
+  image_url?: string | null;
 };
 
-const API = (process.env.NEXT_PUBLIC_API_URL ?? "").replace(/\/api\/?$/, "") + "/api";
-const CITIES = ["Karachi","Lahore","Islamabad","Rawalpindi","Faisalabad","Multan","Hyderabad","Quetta","Peshawar","Sialkot"];
+type PaymentMethod = "cod" | "online";
 
-function validatePhone(phone: string) {
-  const c = phone.replace(/[\s\-\(\)]/g, "");
-  return /^03[0-9]{9}$/.test(c) || /^\+923[0-9]{9}$/.test(c) || /^923[0-9]{9}$/.test(c);
+function errMsg(err: unknown) {
+  if (axios.isAxiosError(err)) return err.response?.data?.error || "Something went wrong";
+  return "Something went wrong";
+}
+
+function validatePakistaniPhone(val: string): boolean {
+  const cleaned = val.replace(/[\s\-()]/g, "");
+  return /^03[0-9]{9}$/.test(cleaned) || /^\+923[0-9]{9}$/.test(cleaned) || /^923[0-9]{9}$/.test(cleaned);
 }
 
 export default function WebsiteCheckout({
-  branch, cart, onBack, onOrderPlaced,
+  branch,
+  cart,
+  orderType = "delivery",
+  onBack,
+  onOrderPlaced,
 }: {
-  branch: { id: number; name: string };
+  branch: Branch;
   cart: CartItem[];
+  orderType?: "delivery" | "pickup";
   onBack: () => void;
   onOrderPlaced: (orderCode: string, total: number) => void;
 }) {
+  const site = useSiteSettings();
+  const [title, setTitle] = useState("Mr.");
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
-  const [phoneError, setPhoneError] = useState("");
+  const [altPhone, setAltPhone] = useState("");
   const [email, setEmail] = useState("");
-  const [flatNo, setFlatNo] = useState("");
-  const [building, setBuilding] = useState("");
-  const [area, setArea] = useState("");
-  const [city, setCity] = useState("Karachi");
+  const [notes, setNotes] = useState("");
+  const [address, setAddress] = useState("");
+  const [payment, setPayment] = useState<PaymentMethod>("cod");
+  const [voucher, setVoucher] = useState("");
+  const [voucherApplied, setVoucherApplied] = useState(false);
+  const [voucherError, setVoucherError] = useState("");
+  const [discountAmt, setDiscountAmt] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [phoneError, setPhoneError] = useState("");
 
-  const total = cart.reduce((s, c) => s + c.unit_price * c.quantity, 0);
-  const address = [flatNo, building, area, city].filter(Boolean).join(", ");
+  const fmt = (n: number) => Math.round(n).toLocaleString();
+  const subtotal = cart.reduce((s, c) => s + c.unit_price * c.quantity, 0);
+  const total = subtotal - discountAmt;
 
-  function handlePhone(val: string) {
-    setPhone(val);
-    if (val && !validatePhone(val)) setPhoneError("Valid Pakistani number (e.g. 0300-1234567)");
-    else setPhoneError("");
+  function handlePhoneChange(val: string, setter: (v: string) => void, errSetter?: (e: string) => void) {
+    setter(val);
+    if (errSetter) {
+      if (val && !validatePakistaniPhone(val)) {
+        errSetter("Invalid PK number (03XX-XXXXXXX)");
+      } else {
+        errSetter("");
+      }
+    }
+  }
+
+  const [applyingVoucher, setApplyingVoucher] = useState(false);
+
+  async function applyVoucher() {
+    setVoucherError("");
+    if (!voucher.trim()) return;
+
+    setApplyingVoucher(true);
+    try {
+      const res = await api.post<{ discount_amount: number }>("/settings/vouchers/validate", {
+        code: voucher.trim(),
+        order_amount: subtotal,
+      });
+      setDiscountAmt(res.data.discount_amount);
+      setVoucherApplied(true);
+    } catch (err) {
+      setVoucherError(errMsg(err));
+    } finally {
+      setApplyingVoucher(false);
+    }
+  }
+
+  function removeVoucher() {
+    setVoucher("");
+    setVoucherApplied(false);
+    setDiscountAmt(0);
+    setVoucherError("");
   }
 
   async function handleSubmit() {
     setError("");
-    if (!name.trim()) { setError("Name is required"); return; }
-    if (!phone.trim() || !validatePhone(phone)) { setError("Valid Pakistani phone required"); return; }
-    if (!area.trim()) { setError("Area is required"); return; }
+
+    // Validation
+    if (!name.trim()) return setError("Full name is required");
+    if (!phone.trim()) return setError("Mobile number is required");
+    if (!validatePakistaniPhone(phone)) return setError("Invalid mobile number");
+    if (orderType === "delivery" && !address.trim()) return setError("Delivery address is required");
+
     setSubmitting(true);
     try {
-      const res = await axios.post(`${API}/public/order`, {
+      const payload = {
         branch_id: branch.id,
-        items: cart.map((c) => ({ product_id: c.product_id, variant_id: c.variant_id, quantity: c.quantity })),
-        customer_name: name,
+        source: "online",
+        order_type: orderType,
+        payment_method: payment,
+        customer_name: `${title} ${name}`.trim(),
         customer_phone: phone,
+        customer_alt_phone: altPhone || null,
         customer_email: email || null,
-        customer_address: address,
-        payment_method: "cash",
-      });
-      onOrderPlaced(res.data.order_code, Number(res.data.total));
+        customer_address: orderType === "delivery" ? address : null,
+        customer_notes: notes || null,
+        voucher_code: voucherApplied ? voucher : null,
+        discount_amount: discountAmt,
+        items: cart.map((c) => ({
+          product_id: c.product_id,
+          variant_id: c.variant_id,
+          product_name: c.product_name,
+          variant_name: c.variant_name,
+          unit_price: c.unit_price,
+          quantity: c.quantity,
+        })),
+      };
+
+      const res = await api.post<{ order_code: string; total: number }>("/public/order", payload);
+      onOrderPlaced(res.data.order_code, res.data.total ?? total);
     } catch (err) {
-      if (axios.isAxiosError(err)) setError(err.response?.data?.error || "Order failed");
-      else setError("Something went wrong");
-    } finally { setSubmitting(false); }
+      setError(errMsg(err));
+    } finally {
+      setSubmitting(false);
+    }
   }
 
-  const inp: React.CSSProperties = {
-    width: "100%", border: "1px solid #EDE8E1", borderRadius: "12px",
-    padding: "12px 14px", fontSize: "15px", fontFamily: "inherit",
-    outline: "none", color: "#1A1613", background: "#fff", boxSizing: "border-box",
-  };
-  const card: React.CSSProperties = {
-    background: "#fff", border: "1px solid #EDE8E1",
-    borderRadius: "20px", overflow: "hidden", marginBottom: "16px",
-  };
-  const label: React.CSSProperties = {
-    fontSize: "11px", fontWeight: 700, color: "#A89F94",
-    textTransform: "uppercase", letterSpacing: "0.1em",
-    display: "block", marginBottom: "7px",
-  };
+  const isPickup = orderType === "pickup";
 
   return (
-    <div style={{ minHeight: "100vh", background: "#FAF8F5", fontFamily: "'DM Sans',-apple-system,sans-serif" }}>
-      <nav style={{ background: "#fff", borderBottom: "1px solid #EDE8E1", padding: "0 16px", height: "60px", display: "flex", alignItems: "center", gap: "12px", position: "sticky", top: 0, zIndex: 50 }}>
-        <button onClick={onBack} style={{ background: "none", border: "none", fontSize: "20px", cursor: "pointer", color: "#6B6259" }}>←</button>
-        <div style={{ width: "34px", height: "34px", background: "#E8542F", borderRadius: "10px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "18px" }}>🔥</div>
-        <span style={{ fontSize: "20px", fontWeight: 800, letterSpacing: "-0.03em", color: "#1A1613" }}>Checkout</span>
-      </nav>
+    <div
+      className="min-h-screen"
+      style={{
+        fontFamily: "'DM Sans','Inter',-apple-system,sans-serif",
+        background: site.backgroundColor,
+      }}
+    >
+      <SiteHeader
+        left={
+          <button
+            onClick={onBack}
+            className="flex items-center gap-2 text-sm font-semibold text-[#6B6259] hover:text-[#1A1613]"
+          >
+            ← Back to menu
+          </button>
+        }
+      />
 
-      <div className="co-layout" style={{ maxWidth: "1100px", margin: "0 auto", padding: "24px 16px 120px", display: "grid", gridTemplateColumns: "1fr 360px", gap: "24px", alignItems: "start" }}>
+      <div className="max-w-7xl mx-auto px-3 md:px-6 py-6 grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
+        {/* ═══════════════════════════════════════════════════
+            LEFT — 2 cards (Order type info + Form + Payment)
+            ═══════════════════════════════════════════════════ */}
+        <div className="lg:col-span-2 space-y-4">
+          {/* Order type info card */}
+          <div className="bg-white rounded-2xl border border-[#E8DFD0] p-5">
+            <p className="text-sm text-[#6B6259] flex items-center gap-2 flex-wrap">
+              This is a{" "}
+              <span className="font-bold text-[#1A1613]">
+                {isPickup ? "TAKEAWAY ORDER" : "DELIVERY ORDER"}
+              </span>
+              <span className="text-lg">{isPickup ? "🥡" : "🛵"}</span>
+            </p>
 
-        <div style={{ minWidth: 0 }}>
-          {error && (
-            <div style={{ background: "#FFF0EE", border: "1px solid #FCD9C8", borderRadius: "14px", padding: "12px 16px", marginBottom: "16px", fontSize: "14px", color: "#C0392B" }}>
-              ⚠ {error}
-            </div>
-          )}
+            {isPickup && (
+              <>
+                <p className="text-sm text-[#6B6259] mt-3 mb-1">You have to collect your order from</p>
+                <p className="font-bold text-[#1A1613] text-lg">{branch.name}</p>
+                <p className="text-sm text-[#6B6259] mt-1">
+                  <span className="font-semibold">Location:</span> {branch.address}
+                </p>
+                {branch.phone && (
+                  <p className="text-sm text-[#6B6259] mt-1">
+                    <span className="font-semibold">Phone:</span> {branch.phone}
+                  </p>
+                )}
+                <a
+                  href={`https://maps.google.com/?q=${encodeURIComponent(branch.address)}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1 mt-2 text-sm text-[#E8542F] font-semibold hover:underline"
+                >
+                  View Location 📍
+                </a>
+              </>
+            )}
 
-          <div style={card}>
-            <div style={{ padding: "18px 20px", borderBottom: "1px solid #F0EBE4" }}>
-              <p style={{ fontSize: "17px", fontWeight: 700, color: "#1A1613" }}>Your details</p>
-            </div>
-            <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "16px" }}>
-              <div>
-                <label style={label}>Full name *</label>
-                <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ali Hassan" style={inp} />
-              </div>
-              <div>
-                <label style={label}>Phone *</label>
-                <div style={{ display: "flex", border: `1px solid ${phoneError ? "#FCD9C8" : "#EDE8E1"}`, borderRadius: "12px", overflow: "hidden" }}>
-                  <span style={{ padding: "12px 14px", background: "#F5F1EB", borderRight: "1px solid #EDE8E1", fontSize: "16px", flexShrink: 0 }}>🇵🇰</span>
-                  <input value={phone} onChange={(e) => handlePhone(e.target.value)} placeholder="0300-1234567" type="tel"
-                    style={{ ...inp, border: "none", borderRadius: 0, flex: 1, width: "auto" }} />
-                </div>
-                {phoneError && <p style={{ fontSize: "12px", color: "#E8542F", marginTop: "5px" }}>{phoneError}</p>}
-                {!phoneError && phone && <p style={{ fontSize: "12px", color: "#16A34A", marginTop: "5px" }}>✓ Valid number</p>}
-              </div>
-              <div>
-                <label style={label}>Email <span style={{ color: "#C4BDB7", fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>(optional — for order confirmation)</span></label>
-                <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" type="email" style={inp} />
-              </div>
-            </div>
+            {!isPickup && (
+              <>
+                <p className="text-sm text-[#6B6259] mt-3 mb-1">Delivering from</p>
+                <p className="font-bold text-[#1A1613] text-lg">{branch.name}</p>
+                <p className="text-sm text-[#6B6259] mt-1">{branch.address}</p>
+              </>
+            )}
           </div>
 
-          <div style={card}>
-            <div style={{ padding: "18px 20px", borderBottom: "1px solid #F0EBE4" }}>
-              <p style={{ fontSize: "17px", fontWeight: 700, color: "#1A1613" }}>Delivery address</p>
-            </div>
-            <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "16px" }}>
-              <div className="addr-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-                <div>
-                  <label style={label}>Flat / House #</label>
-                  <input value={flatNo} onChange={(e) => setFlatNo(e.target.value)} placeholder="A-12 / Flat 3" style={inp} />
-                </div>
-                <div>
-                  <label style={label}>Building / Street</label>
-                  <input value={building} onChange={(e) => setBuilding(e.target.value)} placeholder="Rose Tower / St. 5" style={inp} />
-                </div>
+          {/* Info form card */}
+          <div className="bg-white rounded-2xl border border-[#E8DFD0] overflow-hidden">
+            <div className="bg-[#FFF5F1] px-5 py-4 flex items-center gap-3 border-b border-[#FFD5C7]">
+              <div className="w-10 h-10 rounded-full bg-[#E8542F] flex items-center justify-center shrink-0">
+                <span className="text-lg">📝</span>
               </div>
-              <div className="addr-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-                <div>
-                  <label style={label}>Area / Locality *</label>
-                  <input value={area} onChange={(e) => setArea(e.target.value)} placeholder="DHA Phase 5, Gulshan..." style={inp} />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-[#1A1613] flex items-center gap-2 flex-wrap">
+                  This is a{" "}
+                  <span className="bg-[#E8542F] text-white text-xs font-bold px-2 py-0.5 rounded">
+                    {isPickup ? "Pickup Order" : "Delivery Order"}
+                  </span>
+                </p>
+                <p className="text-[10px] uppercase tracking-wider text-[#6B6259] mt-0.5">
+                  Just a last step, please fill your information below
+                </p>
+              </div>
+            </div>
+
+            <div className="p-5 space-y-4">
+              {error && (
+                <div className="text-sm text-[#9E3527] bg-[#FBEAE7] border border-[#F0C9C2] rounded-xl px-3 py-2.5">
+                  {error}
                 </div>
+              )}
+
+              {/* Title + Name */}
+              <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <label style={label}>City</label>
-                  <select value={city} onChange={(e) => setCity(e.target.value)} style={{ ...inp, appearance: "none" as any }}>
-                    {CITIES.map((c) => <option key={c}>{c}</option>)}
+                  <label className="text-xs font-semibold text-[#1A1613] block mb-1.5">Title</label>
+                  <select
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    className="w-full h-11 border border-[#E8DFD0] rounded-xl px-3 text-sm bg-white focus:outline-none focus:border-[#E8542F]"
+                  >
+                    <option>Mr.</option>
+                    <option>Mrs.</option>
+                    <option>Ms.</option>
                   </select>
                 </div>
-              </div>
-              {address && (
-                <div style={{ background: "#F5F1EB", borderRadius: "12px", padding: "12px 16px", display: "flex", gap: "8px", alignItems: "flex-start" }}>
-                  <span style={{ flexShrink: 0 }}>📍</span>
-                  <p style={{ fontSize: "14px", color: "#4A423B", lineHeight: 1.5 }}>{address}</p>
+                <div className="col-span-2">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-xs font-semibold text-[#1A1613]">Full Name</label>
+                    <span className="text-[10px] font-semibold text-[#E8542F] bg-[#FFE8E0] px-2 py-0.5 rounded">
+                      *Required
+                    </span>
+                  </div>
+                  <input
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Full Name"
+                    className="w-full h-11 border border-[#E8DFD0] rounded-xl px-3 text-sm bg-white focus:outline-none focus:border-[#E8542F]"
+                    required
+                  />
                 </div>
+              </div>
+
+              {/* Mobile + Alt mobile */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-xs font-semibold text-[#1A1613]">Mobile Number</label>
+                    <span className="text-[10px] font-semibold text-[#E8542F] bg-[#FFE8E0] px-2 py-0.5 rounded">
+                      *Required
+                    </span>
+                  </div>
+                  <input
+                    type="tel"
+                    inputMode="numeric"
+                    value={phone}
+                    onChange={(e) => handlePhoneChange(e.target.value, setPhone, setPhoneError)}
+                    placeholder="03xx-xxxxxxx"
+                    className={`w-full h-11 border rounded-xl px-3 text-sm bg-white focus:outline-none ${
+                      phoneError ? "border-[#F0C9C2] focus:border-[#9E3527]" : "border-[#E8DFD0] focus:border-[#E8542F]"
+                    }`}
+                    required
+                  />
+                  {phoneError && <p className="text-xs text-[#9E3527] mt-1">{phoneError}</p>}
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-[#1A1613] block mb-1.5">
+                    Alternate Mobile Number
+                  </label>
+                  <input
+                    type="tel"
+                    inputMode="numeric"
+                    value={altPhone}
+                    onChange={(e) => setAltPhone(e.target.value)}
+                    placeholder="03xx-xxxxxxx"
+                    className="w-full h-11 border border-[#E8DFD0] rounded-xl px-3 text-sm bg-white focus:outline-none focus:border-[#E8542F]"
+                  />
+                </div>
+              </div>
+
+              {/* Delivery address (only for delivery) */}
+              {!isPickup && (
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-xs font-semibold text-[#1A1613]">Delivery Address</label>
+                    <span className="text-[10px] font-semibold text-[#E8542F] bg-[#FFE8E0] px-2 py-0.5 rounded">
+                      *Required
+                    </span>
+                  </div>
+                  <textarea
+                    value={address}
+                    onChange={(e) => setAddress(e.target.value)}
+                    placeholder="House / Street / Area / Landmark"
+                    rows={2}
+                    className="w-full border border-[#E8DFD0] rounded-xl px-3 py-2.5 text-sm bg-white focus:outline-none focus:border-[#E8542F] resize-none"
+                  />
+                </div>
+              )}
+
+              {/* Notes */}
+              <div>
+                <label className="text-xs font-semibold text-[#1A1613] block mb-1.5">
+                  {isPickup ? "Pickup Notes" : "Delivery Notes"}
+                </label>
+                <input
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="Any special instructions?"
+                  className="w-full h-11 border border-[#E8DFD0] rounded-xl px-3 text-sm bg-white focus:outline-none focus:border-[#E8542F]"
+                />
+              </div>
+
+              {/* Email */}
+              <div>
+                <label className="text-xs font-semibold text-[#1A1613] block mb-1.5">Email Address</label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="Enter your email"
+                  className="w-full h-11 border border-[#E8DFD0] rounded-xl px-3 text-sm bg-white focus:outline-none focus:border-[#E8542F]"
+                />
+              </div>
+            </div>
+
+            {/* Payment Information */}
+            <div className="px-5 pb-5 border-t border-[#E8DFD0] pt-5">
+              <p className="text-sm font-bold text-[#1A1613] mb-3">Payment Information</p>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setPayment("cod")}
+                  className={`relative p-4 rounded-xl border-2 transition-all ${
+                    payment === "cod"
+                      ? "border-[#E8542F] bg-[#FFF5F1]"
+                      : "border-[#E8DFD0] hover:border-[#F0A93B]"
+                  }`}
+                >
+                  {payment === "cod" && (
+                    <span className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-[#E8542F] text-white flex items-center justify-center text-xs">
+                      ✓
+                    </span>
+                  )}
+                  <div className="text-3xl mb-2">💵</div>
+                  <p className="text-sm font-bold text-[#1A1613]">Cash on Delivery</p>
+                  <p className="text-xs text-[#6B6259] mt-0.5">Pay when you receive</p>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setPayment("online")}
+                  className={`relative p-4 rounded-xl border-2 transition-all ${
+                    payment === "online"
+                      ? "border-[#E8542F] bg-[#FFF5F1]"
+                      : "border-[#E8DFD0] hover:border-[#F0A93B]"
+                  }`}
+                >
+                  {payment === "online" && (
+                    <span className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-[#E8542F] text-white flex items-center justify-center text-xs">
+                      ✓
+                    </span>
+                  )}
+                  <div className="flex gap-1 mb-2 text-3xl">💳</div>
+                  <p className="text-sm font-bold text-[#1A1613]">Online Payment</p>
+                  <p className="text-xs text-[#6B6259] mt-0.5">Card / Wallet</p>
+                </button>
+              </div>
+              {payment === "online" && (
+                <p className="text-xs text-[#6B6259] mt-3 bg-[#FFF8ED] border border-[#F0D99A] rounded-lg px-3 py-2">
+                  💡 Online payment gateway will open after placing order (coming soon)
+                </p>
               )}
             </div>
           </div>
-
-          <div style={{ ...card, marginBottom: 0 }}>
-            <div style={{ padding: "18px 20px", display: "flex", alignItems: "center", gap: "16px" }}>
-              <div style={{ width: "48px", height: "48px", background: "#FFF0E8", borderRadius: "14px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "24px", flexShrink: 0 }}>💵</div>
-              <div>
-                <p style={{ fontSize: "16px", fontWeight: 600, color: "#1A1613", marginBottom: "2px" }}>Cash on delivery</p>
-                <p style={{ fontSize: "13px", color: "#A89F94" }}>Pay when your order arrives — no card needed</p>
-              </div>
-            </div>
-          </div>
         </div>
 
-        <div className="co-summary" style={{ position: "sticky", top: "76px" }}>
-          <div style={{ background: "#fff", border: "1px solid #EDE8E1", borderRadius: "20px", overflow: "hidden", marginBottom: "14px" }}>
-            <div style={{ padding: "18px 20px", borderBottom: "1px solid #F0EBE4" }}>
-              <p style={{ fontSize: "17px", fontWeight: 700, color: "#1A1613" }}>Order summary</p>
-              <p style={{ fontSize: "13px", color: "#A89F94", marginTop: "2px" }}>{branch.name}</p>
-            </div>
-            <div style={{ padding: "10px 20px", maxHeight: "280px", overflowY: "auto" }}>
-              {cart.map((c) => (
-                <div key={c.key} style={{ display: "flex", justifyContent: "space-between", padding: "9px 0", borderBottom: "1px solid #F7F4F1", fontSize: "14px", gap: "10px" }}>
-                  <span style={{ color: "#1A1613", flex: 1 }}>
-                    {c.product_name}
-                    {c.variant_name && <span style={{ color: "#A89F94" }}> ({c.variant_name})</span>}
-                    <span style={{ color: "#A89F94" }}> × {c.quantity}</span>
-                  </span>
-                  <span style={{ fontFamily: "monospace", fontWeight: 700, color: "#1A1613", flexShrink: 0 }}>Rs {(c.unit_price * c.quantity).toLocaleString()}</span>
+        {/* ═══════════════════════════════════════════════════
+            RIGHT — Order summary (sticky)
+            ═══════════════════════════════════════════════════ */}
+        <div className="lg:sticky lg:top-24 lg:self-start space-y-4">
+          {/* Items summary */}
+          <div className="bg-white rounded-2xl border border-[#E8DFD0] p-4">
+            <p className="text-xs font-semibold text-[#6B6259] uppercase tracking-wider mb-3">
+              Your order ({cart.length} item{cart.length > 1 ? "s" : ""})
+            </p>
+            <div className="space-y-3">
+              {cart.map((item) => (
+                <div key={item.key} className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-lg bg-[#F5F1EB] overflow-hidden flex-shrink-0">
+                    {item.image_url ? (
+                      <img src={item.image_url} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-xl">🍽️</div>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-bold text-[#1A1613] truncate">
+                      <span className="text-[#E8542F]">{item.quantity}x</span> {item.product_name}
+                    </p>
+                    {item.variant_name && (
+                      <span className="inline-block text-[10px] font-semibold px-1.5 py-0.5 rounded bg-[#FFE8E0] text-[#E8542F] mt-0.5">
+                        {item.variant_name}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-sm font-bold text-[#1E293B]">
+                    Rs. {fmt(item.unit_price * item.quantity)}
+                  </p>
                 </div>
               ))}
             </div>
-            <div style={{ padding: "16px 20px", borderTop: "1px solid #F0EBE4" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "14px", color: "#6B6259", marginBottom: "7px" }}>
-                <span>Delivery fee</span><span style={{ color: "#16A34A", fontWeight: 600 }}>Free</span>
+          </div>
+
+          {/* Totals */}
+          <div className="bg-[#FFF5F1] border border-[#FFD5C7] rounded-2xl p-4">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2 text-sm text-[#1A1613]">
+                <span>🧮</span> Total
               </div>
-              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "19px", fontWeight: 800, color: "#1A1613", paddingTop: "12px", borderTop: "1px solid #EDE8E1" }}>
-                <span>Total</span><span style={{ fontFamily: "monospace" }}>Rs {total.toLocaleString()}</span>
+              <span className="font-bold text-[#1A1613]">Rs. {fmt(subtotal)}</span>
+            </div>
+            {discountAmt > 0 && (
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2 text-sm text-[#16A34A]">
+                  <span>%</span> Discount
+                </div>
+                <span className="font-bold text-[#16A34A]">− Rs. {fmt(discountAmt)}</span>
               </div>
+            )}
+            <div className="h-px bg-[#FFD5C7] my-3" />
+            <div className="flex items-center justify-between">
+              <span className="font-bold text-[#1A1613] text-base">Grand Total</span>
+              <span className="font-bold text-[#E8542F] text-xl">Rs. {fmt(total)}</span>
             </div>
           </div>
-          <button onClick={handleSubmit} disabled={submitting}
-            style={{ width: "100%", background: submitting ? "#C4BDB7" : "#E8542F", color: "#fff", border: "none", borderRadius: "16px", padding: "16px 20px", fontSize: "16px", fontWeight: 700, cursor: submitting ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "space-between", fontFamily: "inherit" }}>
-            <span>{submitting ? "Placing order..." : "Place order →"}</span>
-            <span style={{ fontFamily: "monospace", opacity: 0.85 }}>Rs {total.toLocaleString()}</span>
+
+          {discountAmt > 0 && (
+            <div className="bg-[#E6F2EF] border border-[#C7E2DA] rounded-2xl px-4 py-2.5 flex items-center gap-2">
+              <span className="w-6 h-6 rounded-full bg-[#16A34A] text-white flex items-center justify-center text-xs">%</span>
+              <span className="text-sm text-[#16A34A] font-semibold">
+                Yay! You saved Rs. {fmt(discountAmt)}
+              </span>
+            </div>
+          )}
+
+          {/* Voucher */}
+          <div className="bg-white rounded-2xl border border-[#E8DFD0] p-4">
+            {!voucherApplied ? (
+              <>
+                <div className="flex gap-2">
+                  <input
+                    value={voucher}
+                    onChange={(e) => setVoucher(e.target.value.toUpperCase())}
+                    placeholder="Enter Voucher / Promo code"
+                    className="flex-1 h-11 border border-[#E8DFD0] rounded-xl px-3 text-sm bg-white focus:outline-none focus:border-[#E8542F]"
+                  />
+                  <button
+                    onClick={applyVoucher}
+                    disabled={!voucher.trim() || applyingVoucher}
+                    className="px-5 h-11 rounded-xl bg-[#E8542F] text-white text-sm font-semibold hover:bg-[#D64822] disabled:opacity-50"
+                  >
+                    {applyingVoucher ? "Checking..." : "Apply"}
+                  </button>
+                </div>
+                {voucherError && <p className="text-xs text-[#9E3527] mt-2">⚠ {voucherError}</p>}
+              </>
+            ) : (
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="w-6 h-6 rounded-full bg-[#16A34A] text-white flex items-center justify-center text-xs">✓</span>
+                  <span className="text-sm font-bold text-[#16A34A]">{voucher} applied</span>
+                </div>
+                <button onClick={removeVoucher} className="text-xs text-[#9E3527] font-semibold hover:underline">
+                  Remove
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Place Order button */}
+          <button
+            onClick={handleSubmit}
+            disabled={submitting || !name || !phone || !!phoneError || (!isPickup && !address)}
+            className="w-full py-4 rounded-full bg-gradient-to-r from-[#E8542F] to-[#D64822] text-white font-bold text-base flex items-center justify-center gap-2 shadow-lg active:scale-[0.98] transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <span>🛒</span>
+            {submitting ? "Placing order..." : "Place Order"}
+          </button>
+
+          {/* Continue link */}
+          <button
+            onClick={onBack}
+            className="w-full text-center text-sm font-semibold text-[#E8542F] hover:underline flex items-center justify-center gap-1.5"
+          >
+            ← continue to add more items
           </button>
         </div>
       </div>
-
-      <div className="co-mobile-btn" style={{ position: "fixed", bottom: 0, left: 0, right: 0, padding: "12px 16px", background: "rgba(250,248,245,0.96)", backdropFilter: "blur(12px)", borderTop: "1px solid #EDE8E1", zIndex: 40 }}>
-        <button onClick={handleSubmit} disabled={submitting}
-          style={{ width: "100%", background: submitting ? "#C4BDB7" : "#E8542F", color: "#fff", border: "none", borderRadius: "14px", padding: "15px 20px", fontSize: "15px", fontWeight: 700, cursor: submitting ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "space-between", fontFamily: "inherit" }}>
-          <span>{submitting ? "Placing..." : "Place order →"}</span>
-          <span style={{ fontFamily: "monospace" }}>Rs {total.toLocaleString()}</span>
-        </button>
-      </div>
-
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap');
-        @media (max-width: 900px) {
-          .co-layout { grid-template-columns: 1fr !important; }
-          .co-summary { display: none !important; }
-          .addr-grid { grid-template-columns: 1fr !important; }
-        }
-        @media (min-width: 901px) {
-          .co-mobile-btn { display: none !important; }
-        }
-      `}</style>
     </div>
   );
 }

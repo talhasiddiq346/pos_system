@@ -1,13 +1,34 @@
 "use client";
 import { useEffect, useState } from "react";
 import axios from "axios";
-
-type Branch = { id: number; name: string; address: string };
+import { useSiteSettings } from "@/lib/useSiteSettings";
 const API = (process.env.NEXT_PUBLIC_API_URL ?? "").replace(/\/api\/?$/, "") + "/api";
 
-export default function BranchSelector({ onSelect, onTrack }: { onSelect: (b: Branch) => void; onTrack: () => void }) {
+
+
+type Branch = {
+  id: number;
+  name: string;
+  address: string;
+  city?: string;
+  phone?: string;
+};
+
+type OrderType = "delivery" | "pickup";
+
+export default function BranchSelector({
+  onSelect,
+  onTrack,
+}: {
+  onSelect: (branch: Branch, orderType: OrderType) => void;
+  onTrack: () => void;
+}) {
+  const site = useSiteSettings();
   const [branches, setBranches] = useState<Branch[]>([]);
   const [loading, setLoading] = useState(true);
+  const [orderType, setOrderType] = useState<OrderType>("delivery");
+  const [city, setCity] = useState<string>("Karachi");
+  const [selectedBranchId, setSelectedBranchId] = useState<number | "">("");
 
   useEffect(() => {
     axios.get(`${API}/public/branches`).then((r) => {
@@ -16,92 +37,175 @@ export default function BranchSelector({ onSelect, onTrack }: { onSelect: (b: Br
     }).catch(() => setLoading(false));
   }, []);
 
+
+
+  // Get unique cities from branches
+  const cities = Array.from(new Set(branches.map((b) => b.city).filter(Boolean))) as string[];
+  const availableCities = cities.length > 0 ? cities : ["Karachi"];
+  const filteredBranches = branches.filter((b) => !b.city || b.city === city);
+
+  function handleSelect() {
+    const branch = branches.find((b) => b.id === selectedBranchId);
+    if (branch) onSelect(branch, orderType);
+  }
+
   return (
-    <div style={{ minHeight: "100vh", background: "#FAF8F5", fontFamily: "'DM Sans',-apple-system,sans-serif" }}>
-      {/* Navbar */}
-      <nav style={{ background: "#fff", borderBottom: "1px solid #EDE8E1", padding: "0 24px", height: "64px", display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, zIndex: 50 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-          <div style={{ width: "36px", height: "36px", background: "#E8542F", borderRadius: "10px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "20px" }}>🔥</div>
-          <span style={{ fontSize: "22px", fontWeight: 800, letterSpacing: "-0.03em", color: "#1A1613" }}>Tandoor</span>
-        </div>
-        <button onClick={onTrack}
-          style={{ fontSize: "14px", fontWeight: 600, color: "#6B6259", background: "none", border: "none", cursor: "pointer", padding: "8px 12px" }}>
-          Track order
-        </button>
-      </nav>
+    <div
+      className="min-h-screen relative overflow-hidden"
+      style={{
+        fontFamily: "'DM Sans','Inter',-apple-system,sans-serif",
+        background: site.backgroundColor,
+      }}
+    >
+      {/* Background pattern — subtle warm texture */}
+      <div className="absolute inset-0 opacity-30" style={{
+        backgroundImage: "radial-gradient(circle at 20% 30%, #E8542F22 0%, transparent 50%), radial-gradient(circle at 80% 70%, #F0A93B22 0%, transparent 50%)",
+      }} />
 
-      {/* Hero */}
-      <div style={{ background: "#1A1613", padding: "clamp(48px,8vw,80px) 24px", position: "relative", overflow: "hidden" }}>
-        <div style={{ position: "absolute", right: "-80px", top: "-80px", width: "380px", height: "380px", background: "#E8542F", opacity: 0.1, borderRadius: "50%" }} />
-        <div style={{ position: "absolute", left: "60%", bottom: "-100px", width: "280px", height: "280px", background: "#F0A93B", opacity: 0.07, borderRadius: "50%" }} />
-        <div style={{ position: "relative", maxWidth: "800px", margin: "0 auto", textAlign: "center" }}>
-          <div style={{ display: "inline-flex", alignItems: "center", gap: "8px", background: "rgba(240,169,59,0.15)", padding: "8px 16px", borderRadius: "24px", marginBottom: "24px" }}>
-            <span style={{ width: "8px", height: "8px", background: "#4ADE80", borderRadius: "50%", display: "inline-block" }} />
-            <span style={{ color: "#F0A93B", fontSize: "13px", fontWeight: 600 }}>Open now · 30 min delivery · Karachi</span>
-          </div>
-          <h1 style={{ color: "#fff", fontSize: "clamp(32px,6vw,52px)", fontWeight: 800, lineHeight: 1.1, letterSpacing: "-0.03em", marginBottom: "16px" }}>
-            Taste the best of<br /><span style={{ color: "#E8542F" }}>desi cuisine</span>, delivered hot
-          </h1>
-          <p style={{ color: "#A89F94", fontSize: "17px", lineHeight: 1.6, maxWidth: "540px", margin: "0 auto" }}>
-            From smoky BBQ to rich karahi — fresh, fast, and at your door in under 30 minutes.
-          </p>
-        </div>
+      {/* Food image grid backdrop (decorative — blurred) */}
+      <div className="absolute inset-0 opacity-20 grid grid-cols-2 md:grid-cols-5 gap-2 p-4 blur-sm pointer-events-none">
+        {[...Array(10)].map((_, i) => (
+          <div
+            key={i}
+            className="rounded-2xl bg-gradient-to-br"
+            style={{
+              background: `linear-gradient(${i * 36}deg, #E8542F, #F0A93B, #D64822)`,
+              aspectRatio: "3/4",
+            }}
+          />
+        ))}
       </div>
 
-      {/* Stats */}
-      <div style={{ background: "#fff", borderBottom: "1px solid #EDE8E1" }}>
-        <div style={{ maxWidth: "800px", margin: "0 auto", display: "flex", overflowX: "auto", padding: "0 24px" }}>
-          {[
-            ["🏪", `${branches.length || "—"}`, "Branches"],
-            ["⚡", "30 min", "Avg delivery"],
-            ["🍽️", "50+", "Menu items"],
-            ["⭐", "4.8", "Rating"],
-          ].map(([icon, num, label]) => (
-            <div key={label} style={{ padding: "18px 28px", display: "flex", alignItems: "center", gap: "12px", borderRight: "1px solid #F0EBE4", whiteSpace: "nowrap", flexShrink: 0 }}>
-              <span style={{ fontSize: "22px" }}>{icon}</span>
-              <div>
-                <p style={{ fontSize: "18px", fontWeight: 800, color: "#1A1613", letterSpacing: "-0.02em" }}>{num}</p>
-                <p style={{ fontSize: "12px", color: "#A89F94", fontWeight: 500 }}>{label}</p>
-              </div>
+      {/* Track order button — top right corner */}
+      <button
+        onClick={onTrack}
+        className="absolute top-4 right-4 z-20 bg-white text-[#1A1613] text-xs font-semibold px-3 py-2 rounded-full border border-[#E8DFD0] hover:bg-[#FAF8F5] shadow-sm flex items-center gap-1.5"
+      >
+        📦 Track order
+      </button>
+
+      {/* Main content */}
+      <div className="relative z-10 min-h-screen flex flex-col items-center justify-center px-4 py-16">
+        {/* Logo — floating above modal */}
+        <div className="mb-[-40px] relative z-20">
+          <div
+            className="w-20 h-20 rounded-2xl flex items-center justify-center shadow-xl border-4 border-white overflow-hidden"
+            style={{ background: site.logoUrl ? "white" : `linear-gradient(135deg, ${site.primaryColor}, ${site.secondaryColor})` }}
+          >
+            {site.logoUrl ? (
+              <img src={site.logoUrl} alt={site.brandName} className="w-full h-full object-contain" />
+            ) : (
+              <span className="text-3xl">🔥</span>
+            )}
+          </div>
+        </div>
+
+        {/* Modal card */}
+        <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden">
+          {/* Header strip */}
+          <div className="h-16" style={{ background: `linear-gradient(90deg, ${site.primaryColor}, ${site.secondaryColor})` }} />
+
+          <div className="px-6 py-6 pt-4">
+            {/* Brand name */}
+            <div className="text-center mb-6 -mt-2">
+              <h1 className="text-2xl font-bold text-[#1A1613] tracking-tight">{site.brandName}</h1>
+              <p className="text-xs text-[#6B6259] mt-0.5">Fresh from the oven</p>
             </div>
-          ))}
-        </div>
-      </div>
 
-      {/* Branch list */}
-      <div style={{ maxWidth: "600px", margin: "0 auto", padding: "40px 20px" }}>
-        <p style={{ fontSize: "12px", fontWeight: 700, color: "#A89F94", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "16px" }}>
-          Select your nearest branch
-        </p>
-        {loading ? (
-          <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-            {[1, 2, 3].map((i) => (
-              <div key={i} style={{ height: "88px", background: "#EDE8E1", borderRadius: "20px", opacity: 0.6 }} />
-            ))}
-          </div>
-        ) : branches.length === 0 ? (
-          <div style={{ background: "#fff", border: "1px solid #EDE8E1", borderRadius: "20px", padding: "40px", textAlign: "center" }}>
-            <p style={{ fontSize: "40px", marginBottom: "12px" }}>🏪</p>
-            <p style={{ fontSize: "16px", fontWeight: 600, color: "#1A1613" }}>No branches available</p>
-            <p style={{ fontSize: "14px", color: "#A89F94", marginTop: "4px" }}>Please check back later</p>
-          </div>
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-            {branches.map((b) => (
-              <button key={b.id} onClick={() => onSelect(b)}
-                style={{ width: "100%", background: "#fff", border: "1px solid #EDE8E1", borderRadius: "20px", padding: "20px 22px", display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer", textAlign: "left", fontFamily: "inherit", transition: "all 0.15s" }}>
-                <div style={{ minWidth: 0, flex: 1 }}>
-                  <p style={{ fontSize: "17px", fontWeight: 700, color: "#1A1613", marginBottom: "4px" }}>{b.name}</p>
-                  {b.address && <p style={{ fontSize: "13px", color: "#A89F94" }}>📍 {b.address}</p>}
-                </div>
-                <div style={{ width: "40px", height: "40px", background: "#FFF0E8", borderRadius: "12px", display: "flex", alignItems: "center", justifyContent: "center", color: "#E8542F", fontSize: "20px", flexShrink: 0 }}>→</div>
+            <h2 className="text-base font-bold text-[#1A1613] text-center mb-4">
+              Select Your Order Type
+            </h2>
+
+            {/* Delivery / Pickup toggle */}
+            <div className="bg-[#F5F1EB] rounded-full p-1 flex mb-6">
+              <button
+                onClick={() => setOrderType("delivery")}
+                className="flex-1 py-2.5 rounded-full text-sm font-semibold transition-all"
+                style={orderType === "delivery" ? { background: site.primaryColor, color: "white" } : { color: "#6B6259" }}
+              >
+                🛵 Delivery
               </button>
-            ))}
-          </div>
-        )}
-      </div>
+              <button
+                onClick={() => setOrderType("pickup")}
+                className="flex-1 py-2.5 rounded-full text-sm font-semibold transition-all"
+                style={orderType === "pickup" ? { background: site.primaryColor, color: "white" } : { color: "#6B6259" }}
+              >
+                🏪 Pick-Up
+              </button>
+            </div>
 
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap');`}</style>
+            {/* Location instruction */}
+            <p className="text-xs text-[#6B6259] text-center mb-3">Please select your location</p>
+
+            {/* Use current location button (visual only for now) */}
+            <button
+              className="w-full mb-4 py-2.5 rounded-full border-2 text-sm font-semibold hover:bg-[#FFF0E8] transition-colors flex items-center justify-center gap-2"
+              style={{ borderColor: site.primaryColor, color: site.primaryColor }}
+              onClick={() => alert("Geolocation feature coming soon!")}
+            >
+              📍 Use Current Location
+            </button>
+
+            {/* City select */}
+            <label className="block text-xs font-semibold text-[#1A1613] mb-1.5">
+              Please Select City
+            </label>
+            <select
+              value={city}
+              onChange={(e) => setCity(e.target.value)}
+              className="w-full mb-4 px-4 py-3 border border-[#E8DFD0] rounded-xl text-sm bg-white focus:outline-none focus:border-[#E8542F]"
+            >
+              {availableCities.map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+
+            {/* Branch/Location select */}
+            <label className="block text-xs font-semibold text-[#1A1613] mb-1.5">
+              {orderType === "pickup" ? "Please select pickup branch" : "Please select your location"}
+            </label>
+            <select
+              value={selectedBranchId}
+              onChange={(e) => setSelectedBranchId(Number(e.target.value))}
+              className="w-full mb-6 px-4 py-3 border border-[#E8DFD0] rounded-xl text-sm bg-white focus:outline-none focus:border-[#E8542F]"
+            >
+              <option value="">
+                {loading ? "Loading branches..." : "Select branch"}
+              </option>
+              {filteredBranches.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.name} — {b.address}
+                </option>
+              ))}
+            </select>
+
+            {/* Select button */}
+            <button
+              onClick={handleSelect}
+              disabled={!selectedBranchId}
+              className={`w-full py-3.5 rounded-full text-white font-semibold text-base transition-all ${
+                selectedBranchId ? "shadow-md active:scale-[0.98]" : "cursor-not-allowed"
+              }`}
+              style={{ background: selectedBranchId ? site.primaryColor : "#F0BFA8" }}
+            >
+              Select
+            </button>
+
+            {/* Footer track link */}
+            <p className="text-center text-xs text-[#6B6259] mt-4">
+              Already ordered?{" "}
+              <button onClick={onTrack} className="font-semibold hover:underline" style={{ color: site.primaryColor }}>
+                Track your order →
+              </button>
+            </p>
+          </div>
+        </div>
+
+        {/* Powered by strip */}
+        <p className="mt-6 text-xs text-[#6B6259]/70">
+          Powered by <span className="font-semibold">{site.brandName}</span> · Fresh &amp; hot delivery
+        </p>
+      </div>
     </div>
   );
 }

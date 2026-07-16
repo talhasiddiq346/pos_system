@@ -37,6 +37,7 @@ export type Product = {
   category: string | null;
   image_url: string | null;
   is_available: boolean;
+  is_popular: boolean;
   variants: ProductVariant[];
 };
 

@@ -97,21 +97,92 @@ router.get(
 // ═══════════════════════════════════════════════════
 router.get("/categories/:branchId", requireAuth, async (req, res) => {
   const { branchId } = req.params;
- 
+
   if (req.user.role === "branch_admin" && req.user.branch_id !== Number(branchId)) {
     return res.status(403).json({ error: "Access denied" });
   }
- 
+
+  // LEFT/FULL join so a category with a picture but no products yet still shows up.
   const result = await pool.query(
-    `SELECT category AS name, COUNT(*)::int AS count
-     FROM products
-     WHERE branch_id = $1 AND category IS NOT NULL AND category != ''
-     GROUP BY category
-     ORDER BY category`,
+    `SELECT COALESCE(p.category, ci.name) AS name,
+            COALESCE(p.count, 0)::int AS count,
+            ci.image_url
+     FROM (
+       SELECT category, COUNT(*) AS count
+       FROM products
+       WHERE branch_id = $1 AND category IS NOT NULL AND category != ''
+       GROUP BY category
+     ) p
+     FULL OUTER JOIN category_images ci ON ci.name = p.category AND ci.branch_id = $1
+     ORDER BY name`,
     [branchId]
   );
   res.json(result.rows);
 });
+
+router.post(
+  "/categories/:branchId/image",
+  requireAuth,
+  requireRole("super_admin", "branch_admin"),
+  cloudUpload.single("image"),
+  async (req, res) => {
+    const { branchId } = req.params;
+    const { name } = req.body;
+
+    if (req.user.role === "branch_admin" && req.user.branch_id !== Number(branchId)) {
+      return res.status(403).json({ error: "Access denied" });
+    }
+    if (!name?.trim()) return res.status(400).json({ error: "Category name is required" });
+    if (!req.file) return res.status(400).json({ error: "No image file received" });
+
+    try {
+      const existing = await pool.query(
+        "SELECT image_public_id FROM category_images WHERE branch_id = $1 AND name = $2",
+        [branchId, name.trim()]
+      );
+
+      const { url, publicId } = await uploadToCloudinary(req.file.buffer, "tandoor/categories");
+      const result = await pool.query(
+        `INSERT INTO category_images (branch_id, name, image_url, image_public_id)
+         VALUES ($1, $2, $3, $4)
+         ON CONFLICT (branch_id, name) DO UPDATE SET image_url = $3, image_public_id = $4
+         RETURNING *`,
+        [branchId, name.trim(), url, publicId]
+      );
+
+      if (existing.rows[0]?.image_public_id) await deleteFromCloudinary(existing.rows[0].image_public_id);
+      res.json(result.rows[0]);
+    } catch (err) {
+      console.error("Category image upload error:", err);
+      res.status(500).json({ error: "Image upload failed" });
+    }
+  }
+);
+
+router.delete(
+  "/categories/:branchId/:name/image",
+  requireAuth,
+  requireRole("super_admin", "branch_admin"),
+  async (req, res) => {
+    const { branchId, name } = req.params;
+    if (req.user.role === "branch_admin" && req.user.branch_id !== Number(branchId)) {
+      return res.status(403).json({ error: "Access denied" });
+    }
+
+    const decodedName = decodeURIComponent(name);
+    const existing = await pool.query(
+      "SELECT image_public_id FROM category_images WHERE branch_id = $1 AND name = $2",
+      [branchId, decodedName]
+    );
+    await pool.query(
+      `UPDATE category_images SET image_url = NULL, image_public_id = NULL
+       WHERE branch_id = $1 AND name = $2`,
+      [branchId, decodedName]
+    );
+    if (existing.rows[0]?.image_public_id) await deleteFromCloudinary(existing.rows[0].image_public_id);
+    res.json({ ok: true });
+  }
+);
 
 router.patch(
   "/categories/:branchId/rename",
@@ -148,7 +219,15 @@ router.patch(
        RETURNING id`,
       [trimmedNew, branchId, old_name]
     );
- 
+
+    // Carry the picture over to the new name (skip if the new name already has one).
+    await pool.query(
+      `UPDATE category_images SET name = $1
+       WHERE branch_id = $2 AND name = $3
+         AND NOT EXISTS (SELECT 1 FROM category_images WHERE branch_id = $2 AND name = $1)`,
+      [trimmedNew, branchId, old_name]
+    );
+
     res.json({ ok: true, updated: result.rowCount });
   }
 );
@@ -159,20 +238,26 @@ router.delete(
   requireRole("super_admin", "branch_admin"),
   async (req, res) => {
     const { branchId, name } = req.params;
- 
+
     if (req.user.role === "branch_admin" && req.user.branch_id !== Number(branchId)) {
       return res.status(403).json({ error: "Access denied" });
     }
- 
+
     const decodedName = decodeURIComponent(name);
- 
+
     const result = await pool.query(
       `UPDATE products SET category = NULL
        WHERE branch_id = $1 AND category = $2
        RETURNING id`,
       [branchId, decodedName]
     );
- 
+
+    const removedImage = await pool.query(
+      `DELETE FROM category_images WHERE branch_id = $1 AND name = $2 RETURNING image_public_id`,
+      [branchId, decodedName]
+    );
+    if (removedImage.rows[0]?.image_public_id) await deleteFromCloudinary(removedImage.rows[0].image_public_id);
+
     res.json({ ok: true, affected: result.rowCount });
   }
 );
@@ -204,7 +289,7 @@ router.post("/", requireAuth, requireRole("super_admin", "branch_admin"), async 
 // ═══════════════════════════════════════════════════
 router.patch("/:id", requireAuth, requireRole("super_admin", "branch_admin"), async (req, res) => {
   const { id } = req.params;
-  const { name, price, category, is_available } = req.body;
+  const { name, price, category, is_available, is_popular } = req.body;
 
   const existing = await pool.query("SELECT * FROM products WHERE id = $1", [id]);
   if (existing.rows.length === 0) return res.status(404).json({ error: "Product not found" });
@@ -223,9 +308,10 @@ router.patch("/:id", requireAuth, requireRole("super_admin", "branch_admin"), as
        name = COALESCE($1, name),
        price = COALESCE($2, price),
        category = COALESCE($3, category),
-       is_available = COALESCE($4, is_available)
-     WHERE id = $5 RETURNING *`,
-    [name ?? null, price ?? null, category ?? null, is_available ?? null, id]
+       is_available = COALESCE($4, is_available),
+       is_popular = COALESCE($5, is_popular)
+     WHERE id = $6 RETURNING *`,
+    [name ?? null, price ?? null, category ?? null, is_available ?? null, is_popular ?? null, id]
   );
   res.json(result.rows[0]);
 });

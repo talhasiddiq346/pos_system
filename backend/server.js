@@ -18,6 +18,7 @@ import riderRoutes from "./routes/riders.js";
 import cashierRoutes from "./routes/cashier.js";
 import reportRoutes from "./routes/reports.js";
 import publicRoutes from "./routes/public.js";
+import settingsRoutes from "./routes/settings.js";
 
 // ── Phase 11 imports
 import analyticsRoutes from "./routes/analytics.js";
@@ -151,6 +152,7 @@ app.use("/api/riders", riderRoutes);
 app.use("/api/cashier", cashierRoutes);
 app.use("/api/reports", reportRoutes);
 app.use("/api/public", publicRoutes);
+app.use("/api/settings", settingsRoutes);
 
 // ── Phase 11 routes
 app.use("/api/reports", analyticsRoutes);
@@ -162,6 +164,16 @@ app.use((err, req, res, next) => {
   // CORS errors get a cleaner response
   if (err.message === "Not allowed by CORS") {
     return res.status(403).json({ error: "CORS: origin not allowed" });
+  }
+  // Multer errors (bad file type, too large) — give a real message instead of a bare 500
+  if (err.name === "MulterError") {
+    if (err.code === "LIMIT_FILE_SIZE") {
+      return res.status(400).json({ error: "Image is too large — max 8MB" });
+    }
+    return res.status(400).json({ error: err.message });
+  }
+  if (err.message?.includes("images allowed")) {
+    return res.status(400).json({ error: err.message });
   }
   console.error("Error:", err);
   res.status(500).json({ error: "Internal server error" });
