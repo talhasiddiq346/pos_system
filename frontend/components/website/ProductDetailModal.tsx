@@ -18,6 +18,7 @@ type Product = {
   discounted_price?: number | null;
   description?: string | null;
   image_url: string | null;
+  is_out_of_stock?: boolean;
   variants?: Variant[];
   addon_groups?: AddonGroup[];
 };
@@ -44,6 +45,7 @@ export default function ProductDetailModal({
   onClose,
   onConfirm,
   categoryEmoji,
+  shareUrl,
 }: {
   product: Product;
   imgOrigin: string;
@@ -51,7 +53,29 @@ export default function ProductDetailModal({
   onClose: () => void;
   onConfirm: (selection: ProductSelection) => void;
   categoryEmoji: string;
+  shareUrl?: string;
 }) {
+  const [copied, setCopied] = useState(false);
+
+  async function handleShare() {
+    if (!shareUrl) return;
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: product.name, text: `Check out ${product.name}`, url: shareUrl });
+      } catch {
+        // user cancelled the native share sheet — no-op
+      }
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // clipboard unavailable — silently ignore
+    }
+  }
+
   const variantGroup: AddonGroup | null = useMemo(() => {
     if (!product.variants || product.variants.length === 0) return null;
     return {
@@ -163,10 +187,19 @@ export default function ProductDetailModal({
         <div className="flex-1 min-w-0 min-h-0 flex flex-col lg:border-l border-[#E8DFD0]">
           <div className="flex items-start justify-between gap-3 px-5 sm:px-6 pt-5 sm:pt-6">
             <h2 className="text-2xl font-bold text-[#1A1613]">{product.name}</h2>
-            <div className="flex items-center gap-2 shrink-0">
-              <button className="w-9 h-9 rounded-full border border-[#E8DFD0] flex items-center justify-center hover:bg-[#FAF8F5]">
+            <div className="flex items-center gap-2 shrink-0 relative">
+              <button
+                onClick={handleShare}
+                title="Share this product"
+                className="w-9 h-9 rounded-full border border-[#E8DFD0] flex items-center justify-center hover:bg-[#FAF8F5]"
+              >
                 <Share2 size={16} />
               </button>
+              {copied && (
+                <span className="absolute top-10 right-10 bg-[#1A1613] text-white text-[10px] font-medium px-2 py-1 rounded-md whitespace-nowrap">
+                  Link copied!
+                </span>
+              )}
               <button
                 onClick={onClose}
                 className="w-9 h-9 rounded-full border border-[#E8DFD0] flex items-center justify-center hover:bg-[#FAF8F5]"
@@ -299,18 +332,20 @@ export default function ProductDetailModal({
                   quantity,
                   unit_price: unitPrice,
                 })}
-                disabled={missingRequired}
+                disabled={missingRequired || product.is_out_of_stock}
                 className="flex-1 text-white font-bold py-3 px-5 rounded-lg transition-colors flex items-center justify-between disabled:opacity-40 disabled:cursor-not-allowed"
                 style={{ background: accentColor }}
               >
                 <span>Rs. {fmt(unitPrice * quantity)}</span>
                 <span className="flex items-center gap-2">
-                  Add to Cart
-                  <span aria-hidden>→</span>
+                  {product.is_out_of_stock ? "Out of Stock" : "Add to Cart"}
+                  {!product.is_out_of_stock && <span aria-hidden>→</span>}
                 </span>
               </button>
             </div>
-            {missingRequired && (
+            {product.is_out_of_stock ? (
+              <p className="text-xs text-[#9E3527] mt-2 text-center">This item is currently out of stock.</p>
+            ) : missingRequired && (
               <p className="text-xs text-[#9E3527] mt-2 text-center">Please make your required selections above.</p>
             )}
           </div>

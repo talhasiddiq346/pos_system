@@ -370,7 +370,7 @@ router.post("/", requireAuth, requireRole("super_admin", "branch_admin"), async 
 // ═══════════════════════════════════════════════════
 router.patch("/:id", requireAuth, requireRole("super_admin", "branch_admin"), async (req, res) => {
   const { id } = req.params;
-  const { name, price, category, is_available, is_popular, discounted_price, description } = req.body;
+  const { name, price, category, is_available, is_popular, discounted_price, description, is_out_of_stock } = req.body;
 
   const existing = await pool.query("SELECT * FROM products WHERE id = $1", [id]);
   if (existing.rows.length === 0) return res.status(404).json({ error: "Product not found" });
@@ -397,12 +397,14 @@ router.patch("/:id", requireAuth, requireRole("super_admin", "branch_admin"), as
        is_available = COALESCE($4, is_available),
        is_popular = COALESCE($5, is_popular),
        discounted_price = $6,
-       description = COALESCE($7, description)
-     WHERE id = $8 RETURNING *`,
+       description = COALESCE($7, description),
+       is_out_of_stock = COALESCE($8, is_out_of_stock)
+     WHERE id = $9 RETURNING *`,
     [
       name ?? null, price ?? null, category ?? null, is_available ?? null, is_popular ?? null,
       discounted_price !== undefined ? (discounted_price === null ? null : Number(discounted_price)) : product.discounted_price,
       description ?? null,
+      is_out_of_stock ?? null,
       id,
     ]
   );

@@ -58,6 +58,7 @@ export default function DineInScreen({ user }: { user: User }) {
   const [openOrder, setOpenOrder] = useState<OpenOrder | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [productModal, setProductModal] = useState<Product | null>(null);
+  const [addingItem, setAddingItem] = useState(false);
 
   const [showFinalize, setShowFinalize] = useState(false);
   const [voucherCode, setVoucherCode] = useState("");
@@ -142,7 +143,8 @@ export default function DineInScreen({ user }: { user: User }) {
   }
 
   async function addItemToTable(product: Product, selection: PosSelection) {
-    if (!selectedTable) return;
+    if (!selectedTable || addingItem) return;
+    setAddingItem(true);
     try {
       await api.post(`/tables/${selectedTable.id}/items`, {
         items: [{
@@ -155,6 +157,8 @@ export default function DineInScreen({ user }: { user: User }) {
       await loadTables();
     } catch (err) {
       setError(errMsg(err));
+    } finally {
+      setAddingItem(false);
     }
   }
 
@@ -334,6 +338,7 @@ export default function DineInScreen({ user }: { user: User }) {
           product={productModal}
           onClose={() => setProductModal(null)}
           onConfirm={(selection) => addItemToTable(productModal, selection)}
+          submitting={addingItem}
         />
       )}
 

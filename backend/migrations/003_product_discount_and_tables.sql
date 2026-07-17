@@ -29,3 +29,7 @@ ALTER TABLE category_images ADD COLUMN IF NOT EXISTS sort_order integer NOT NULL
 
 -- Short customer-facing blurb shown under the product name on the website/POS.
 ALTER TABLE products ADD COLUMN IF NOT EXISTS description text;
+
+-- Distinct from is_available (which hides a product from the menu entirely):
+-- out-of-stock items still show on the menu but can't be ordered.
+ALTER TABLE products ADD COLUMN IF NOT EXISTS is_out_of_stock boolean NOT NULL DEFAULT false;

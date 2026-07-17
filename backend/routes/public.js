@@ -126,11 +126,11 @@ router.post("/order", async (req, res) => {
         throw { status: 400, message: "Invalid item" };
 
       const productRes = await client.query(
-        "SELECT * FROM products WHERE id = $1 AND branch_id = $2 AND is_available = true",
+        "SELECT * FROM products WHERE id = $1 AND branch_id = $2 AND is_available = true AND is_out_of_stock = false",
         [product_id, branch_id]
       );
       if (productRes.rows.length === 0)
-        throw { status: 404, message: "Product not found" };
+        throw { status: 404, message: "Product not found or out of stock" };
       const product = productRes.rows[0];
 
       let unitPrice = Number(product.discounted_price ?? product.price);

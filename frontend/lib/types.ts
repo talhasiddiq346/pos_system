@@ -56,6 +56,7 @@ export type Product = {
   description: string | null;
   image_url: string | null;
   is_available: boolean;
+  is_out_of_stock: boolean;
   is_popular: boolean;
   variants: ProductVariant[];
   addon_groups: AddonGroup[];

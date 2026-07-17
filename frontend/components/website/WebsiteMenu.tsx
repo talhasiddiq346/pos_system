@@ -33,6 +33,7 @@ type Product = {
   image_url: string | null;
   description?: string | null;
   is_available?: boolean;
+  is_out_of_stock?: boolean;
   is_popular?: boolean;
   variants?: Variant[];
   addon_groups?: AddonGroup[];
@@ -78,12 +79,14 @@ export default function WebsiteMenu({
   onBack,
   onTrack,
   onCheckout,
+  initialProductId,
 }: {
   branch: Branch;
   orderType?: "delivery" | "pickup";
   onBack: () => void;
   onTrack: () => void;
   onCheckout: (cart: CartItem[]) => void;
+  initialProductId?: number | null;
 }) {
   const site = useSiteSettings();
   const [products, setProducts] = useState<Product[]>([]);
@@ -113,6 +116,12 @@ export default function WebsiteMenu({
         setCategoryOrder({});
       });
   }, [branch.id]);
+
+  useEffect(() => {
+    if (!initialProductId || products.length === 0) return;
+    const match = products.find((p) => p.id === initialProductId);
+    if (match) setProductModal(match);
+  }, [initialProductId, products]);
 
   const categoryGroups = useMemo(() => {
     const filtered = search.trim()
@@ -461,6 +470,7 @@ export default function WebsiteMenu({
           imgOrigin={IMG}
           accentColor={site.primaryColor}
           categoryEmoji={getCategoryEmoji(productModal.category)}
+          shareUrl={`${window.location.origin}/order?branch=${branch.id}&product=${productModal.id}`}
           onClose={() => setProductModal(null)}
           onConfirm={(selection) => addToCart(productModal, selection)}
         />
@@ -514,11 +524,13 @@ function ProductCardMain({
     : originalPrice;
   const discPct = hasDiscount ? Math.round((1 - effectivePrice / originalPrice) * 100) : 0;
   const imgSrc = fixImageUrl(product.image_url);
+  const outOfStock = !!product.is_out_of_stock;
 
   return (
     <button
-      onClick={() => onAdd(product)}
-      className="text-left w-full bg-white rounded-xl border border-[#E8DFD0] shadow-sm hover:shadow-md transition-shadow flex items-stretch gap-3 p-3"
+      onClick={() => !outOfStock && onAdd(product)}
+      disabled={outOfStock}
+      className={`text-left w-full bg-white rounded-xl border border-[#E8DFD0] shadow-sm transition-shadow flex items-stretch gap-3 p-3 ${outOfStock ? "opacity-60 cursor-not-allowed" : "hover:shadow-md"}`}
     >
       <div className="flex-1 min-w-0 flex flex-col justify-between py-0.5">
         <div>
@@ -527,13 +539,19 @@ function ProductCardMain({
             <p className="text-xs text-[#6B6259] mt-1 line-clamp-2 leading-relaxed">{product.description}</p>
           )}
         </div>
-        <p className="mt-2">
-          {hasVariants && <span className="text-xs font-normal text-[#6B6259]">From </span>}
-          <span className="font-bold text-[#1E293B] text-base">Rs. {fmt(minVariantPrice)}</span>
-          {hasDiscount && (
-            <span className="ml-1.5 text-xs text-[#9CA3AF] line-through">Rs. {fmt(minOriginalPrice)}</span>
-          )}
-        </p>
+        {outOfStock ? (
+          <span className="mt-2 inline-block bg-[#1A1613] text-white text-[10px] font-bold px-2 py-1 rounded-full w-fit">
+            Out of Stock
+          </span>
+        ) : (
+          <p className="mt-2">
+            {hasVariants && <span className="text-xs font-normal text-[#6B6259]">From </span>}
+            <span className="font-bold text-[#1E293B] text-base">Rs. {fmt(minVariantPrice)}</span>
+            {hasDiscount && (
+              <span className="ml-1.5 text-xs text-[#9CA3AF] line-through">Rs. {fmt(minOriginalPrice)}</span>
+            )}
+          </p>
+        )}
       </div>
 
       <div className="relative w-24 h-24 md:w-28 md:h-28 rounded-xl overflow-hidden bg-[#F5F1EB] flex-shrink-0">
@@ -541,7 +559,7 @@ function ProductCardMain({
           <img
             src={imgSrc}
             alt={product.name}
-            className="w-full h-full object-cover"
+            className={`w-full h-full object-cover ${outOfStock ? "grayscale" : ""}`}
             onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
           />
         ) : (
@@ -549,18 +567,20 @@ function ProductCardMain({
             {getCategoryEmoji(product.category)}
           </div>
         )}
-        {hasDiscount && (
+        {hasDiscount && !outOfStock && (
           <span className="absolute top-1 right-1 bg-[#FBBF24] text-[#1A1613] text-[9px] font-bold px-1.5 py-0.5 rounded">
             {discPct}% OFF
           </span>
         )}
-        <span
-          onClick={(e) => { e.stopPropagation(); onAdd(product); }}
-          className="absolute bottom-1 right-1 w-8 h-8 rounded-full text-white flex items-center justify-center shadow-lg font-bold text-lg active:scale-90 transition-transform"
-          style={{ background: site.primaryColor }}
-        >
-          +
-        </span>
+        {!outOfStock && (
+          <span
+            onClick={(e) => { e.stopPropagation(); onAdd(product); }}
+            className="absolute bottom-1 right-1 w-8 h-8 rounded-full text-white flex items-center justify-center shadow-lg font-bold text-lg active:scale-90 transition-transform"
+            style={{ background: site.primaryColor }}
+          >
+            +
+          </span>
+        )}
       </div>
     </button>
   );
@@ -583,17 +603,20 @@ function ProductCardPopular({
   const imgSrc = fixImageUrl(product.image_url);
   const site = useSiteSettings();
 
+  const outOfStock = !!product.is_out_of_stock;
+
   return (
     <button
-      onClick={() => onAdd(product)}
-      className="group text-left bg-white rounded-3xl overflow-hidden shadow-md border border-[#E8DFD0] hover:shadow-xl hover:-translate-y-1 transition-all duration-200 w-full"
+      onClick={() => !outOfStock && onAdd(product)}
+      disabled={outOfStock}
+      className={`group text-left bg-white rounded-3xl overflow-hidden shadow-md border border-[#E8DFD0] transition-all duration-200 w-full ${outOfStock ? "opacity-60 cursor-not-allowed" : "hover:shadow-xl hover:-translate-y-1"}`}
     >
       <div className="relative aspect-square bg-[#F5F1EB] overflow-hidden">
         {imgSrc ? (
           <img
             src={imgSrc}
             alt={product.name}
-            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+            className={`w-full h-full object-cover transition-transform duration-300 ${outOfStock ? "grayscale" : "group-hover:scale-110"}`}
             onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
           />
         ) : (
@@ -602,24 +625,32 @@ function ProductCardPopular({
           </div>
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/35 via-transparent to-transparent" />
-        <span
-          className="absolute top-2 left-2 text-white text-[10px] font-bold px-2 py-1 rounded-full flex items-center gap-1 shadow-sm"
-          style={{ background: site.primaryColor }}
-        >
-          🔥 Popular
-        </span>
-        {hasDiscount && (
+        {outOfStock ? (
+          <span className="absolute top-2 left-2 bg-[#1A1613] text-white text-[10px] font-bold px-2 py-1 rounded-full shadow-sm">
+            Out of Stock
+          </span>
+        ) : (
+          <span
+            className="absolute top-2 left-2 text-white text-[10px] font-bold px-2 py-1 rounded-full flex items-center gap-1 shadow-sm"
+            style={{ background: site.primaryColor }}
+          >
+            🔥 Popular
+          </span>
+        )}
+        {hasDiscount && !outOfStock && (
           <span className="absolute top-2 right-2 bg-[#FBBF24] text-[#1A1613] text-[9px] font-bold px-2 py-1 rounded-full shadow-sm">
             SALE
           </span>
         )}
-        <span
-          onClick={(e) => { e.stopPropagation(); onAdd(product); }}
-          className="absolute bottom-2 right-2 w-10 h-10 rounded-full text-white flex items-center justify-center shadow-lg font-bold text-xl active:scale-90 transition-transform hover:scale-110"
-          style={{ background: site.primaryColor }}
-        >
-          +
-        </span>
+        {!outOfStock && (
+          <span
+            onClick={(e) => { e.stopPropagation(); onAdd(product); }}
+            className="absolute bottom-2 right-2 w-10 h-10 rounded-full text-white flex items-center justify-center shadow-lg font-bold text-xl active:scale-90 transition-transform hover:scale-110"
+            style={{ background: site.primaryColor }}
+          >
+            +
+          </span>
+        )}
       </div>
       <div className="p-3">
         <h4 className="font-bold text-[#1A1613] text-sm truncate">{product.name}</h4>

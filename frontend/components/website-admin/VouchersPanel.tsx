@@ -58,6 +58,8 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 const inputCls = "w-full border border-[#E3E5E0] rounded-md px-2.5 py-1.5 text-sm focus:outline-none focus:border-[#2F7D6B]";
 
+const todayStr = new Date().toISOString().slice(0, 10);
+
 export default function VouchersPanel() {
   const [vouchers, setVouchers] = useState<Voucher[]>([]);
   const [loading, setLoading] = useState(true);
@@ -98,6 +100,10 @@ export default function VouchersPanel() {
   async function handleCreate(e: FormEvent) {
     e.preventDefault();
     setError("");
+    if (form.expires_at && form.expires_at < todayStr) {
+      setError("Expiry date can't be in the past");
+      return;
+    }
     setCreating(true);
     try {
       await api.post("/settings/vouchers", toPayload(form));
@@ -127,6 +133,12 @@ export default function VouchersPanel() {
 
   async function handleEditSave(id: number) {
     setError("");
+    const original = vouchers.find((v) => v.id === id);
+    const originalExpiry = original?.expires_at ? original.expires_at.slice(0, 10) : "";
+    if (editForm.expires_at && editForm.expires_at < todayStr && editForm.expires_at !== originalExpiry) {
+      setError("Expiry date can't be in the past");
+      return;
+    }
     setSavingEdit(true);
     try {
       const { code, ...patch } = toPayload(editForm);
@@ -261,6 +273,7 @@ export default function VouchersPanel() {
             <Field label="Expiry date">
               <input
                 type="date"
+                min={todayStr}
                 value={form.expires_at}
                 onChange={(e) => setForm({ ...form, expires_at: e.target.value })}
                 className={inputCls}
@@ -349,9 +362,10 @@ export default function VouchersPanel() {
                   <Field label="Expiry date">
                     <input
                       type="date"
+                      min={todayStr}
                       value={editForm.expires_at}
                       onChange={(e) => setEditForm({ ...editForm, expires_at: e.target.value })}
-                      className={`${inputCls} max-w-[200px]`}
+                      className={`${inputCls} max-w-50`}
                     />
                   </Field>
                   <div className="flex gap-2 pt-1">

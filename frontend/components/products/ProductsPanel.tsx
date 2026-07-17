@@ -16,6 +16,7 @@ export default function ProductsPanel({ user }: { user: User }) {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [branchFilter, setBranchFilter] = useState<number | "">("");
+  const [categoryFilter, setCategoryFilter] = useState<string>("");
 
   async function load() {
     setLoading(true);
@@ -39,6 +40,9 @@ export default function ProductsPanel({ user }: { user: User }) {
     return branches.find((b) => b.id === id)?.name ?? `Branch #${id}`;
   }
 
+  const categories = Array.from(new Set(products.map((p) => p.category).filter((c): c is string => !!c))).sort();
+  const visibleProducts = categoryFilter ? products.filter((p) => p.category === categoryFilter) : products;
+
   return (
     <div className="space-y-4">
       {isSuperAdmin && (
@@ -48,7 +52,7 @@ export default function ProductsPanel({ user }: { user: User }) {
           </label>
           <select
             value={branchFilter}
-            onChange={(e) => setBranchFilter(e.target.value ? Number(e.target.value) : "")}
+            onChange={(e) => { setBranchFilter(e.target.value ? Number(e.target.value) : ""); setCategoryFilter(""); }}
             className="border border-[#D0D3CB] rounded-md px-2.5 py-1.5 text-sm"
           >
             <option value="">All branches</option>
@@ -74,13 +78,37 @@ export default function ProductsPanel({ user }: { user: User }) {
             Click an item to manage its image and variants.
           </p>
         </div>
+
+        {categories.length > 0 && (
+          <div className="px-5 py-3 border-b border-[#EDEFEA] flex items-center gap-2 flex-wrap">
+            <button
+              onClick={() => setCategoryFilter("")}
+              className={`text-xs px-3 py-1 rounded-full font-medium ${categoryFilter === "" ? "bg-[#2F7D6B] text-white" : "bg-[#F5F6F4] text-[#494D46] hover:bg-[#EDEFEA]"}`}
+            >
+              All ({products.length})
+            </button>
+            {categories.map((cat) => {
+              const count = products.filter((p) => p.category === cat).length;
+              return (
+                <button
+                  key={cat}
+                  onClick={() => setCategoryFilter(cat)}
+                  className={`text-xs px-3 py-1 rounded-full font-medium ${categoryFilter === cat ? "bg-[#2F7D6B] text-white" : "bg-[#F5F6F4] text-[#494D46] hover:bg-[#EDEFEA]"}`}
+                >
+                  {cat} ({count})
+                </button>
+              );
+            })}
+          </div>
+        )}
+
         {loading ? (
           <p className="px-5 py-6 text-sm text-[#494D46]">Loading...</p>
-        ) : products.length === 0 ? (
-          <p className="px-5 py-6 text-sm text-[#494D46]">No products yet.</p>
+        ) : visibleProducts.length === 0 ? (
+          <p className="px-5 py-6 text-sm text-[#494D46]">No products {categoryFilter ? `in "${categoryFilter}"` : "yet"}.</p>
         ) : (
           <ul>
-            {products.map((p) => (
+            {visibleProducts.map((p) => (
               <ProductCard
                 key={p.id}
                 product={p}

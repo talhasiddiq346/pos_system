@@ -16,10 +16,12 @@ export default function ProductOptionsModal({
   product,
   onClose,
   onConfirm,
+  submitting,
 }: {
   product: Product;
   onClose: () => void;
   onConfirm: (selection: PosSelection) => void;
+  submitting?: boolean;
 }) {
   const variantGroup = useMemo(() => {
     const available = product.variants.filter((v) => v.is_available);
@@ -177,11 +179,11 @@ export default function ProductOptionsModal({
                 addon_option_ids: addonOptionIds, addon_summary: addonSummary,
                 quantity, unit_price: unitPrice,
               })}
-              disabled={missingRequired}
+              disabled={missingRequired || submitting}
               className="flex-1 bg-[#2F7D6B] text-white font-medium py-2.5 rounded-md hover:bg-[#27695A] disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-between px-4"
             >
               <span className="mono-num">Rs {(unitPrice * quantity).toFixed(2)}</span>
-              <span>Add to Cart</span>
+              <span>{submitting ? "Adding..." : "Add to Cart"}</span>
             </button>
           </div>
           {missingRequired && <p className="text-xs text-[#9E3527] mt-2 text-center">Make your required selections above.</p>}

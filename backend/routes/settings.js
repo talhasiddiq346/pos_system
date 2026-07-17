@@ -180,6 +180,10 @@ router.post("/vouchers", requireAuth, requireRole("super_admin"), async (req, re
   if (discount_value === undefined || Number(discount_value) <= 0) {
     return res.status(400).json({ error: "Discount value must be greater than 0" });
   }
+  const todayStr = new Date().toISOString().slice(0, 10);
+  if (expires_at && expires_at < todayStr) {
+    return res.status(400).json({ error: "Expiry date can't be in the past" });
+  }
 
   try {
     const result = await pool.query(
@@ -213,6 +217,17 @@ router.patch("/vouchers/:id", requireAuth, requireRole("super_admin"), async (re
 
   if (discount_type && !["percent", "fixed"].includes(discount_type)) {
     return res.status(400).json({ error: "discount_type must be 'percent' or 'fixed'" });
+  }
+
+  if (expires_at) {
+    const existing = await pool.query("SELECT expires_at FROM vouchers WHERE id = $1", [id]);
+    const existingDate = existing.rows[0]?.expires_at
+      ? new Date(existing.rows[0].expires_at).toISOString().slice(0, 10)
+      : null;
+    const todayStr = new Date().toISOString().slice(0, 10);
+    if (expires_at < todayStr && expires_at !== existingDate) {
+      return res.status(400).json({ error: "Expiry date can't be in the past" });
+    }
   }
 
   const result = await pool.query(

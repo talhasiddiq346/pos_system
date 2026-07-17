@@ -1,5 +1,6 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import axios from "axios";
 import BranchSelector from "@/components/website/BranchSelector";
 import WebsiteMenu from "@/components/website/WebsiteMenu";
 import WebsiteCheckout from "@/components/website/WebsiteCheckout";
@@ -21,13 +22,30 @@ type CartItem = {
 
 type Screen =
   | { name: "branches" }
-  | { name: "menu"; branch: Branch; orderType: OrderType }
+  | { name: "menu"; branch: Branch; orderType: OrderType; productId?: number }
   | { name: "checkout"; branch: Branch; orderType: OrderType; cart: CartItem[] }
   | { name: "success"; orderCode: string; total: number }
   | { name: "track"; orderCode?: string };
 
+const API = (process.env.NEXT_PUBLIC_API_URL ?? "").replace(/\/api\/?$/, "") + "/api";
+
 export default function OrderPage() {
   const [screen, setScreen] = useState<Screen>({ name: "branches" });
+
+  // Deep link from a product's share button: /order?branch=<id>&product=<id>
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const branchId = params.get("branch");
+    const productId = params.get("product");
+    if (!branchId) return;
+
+    axios.get<Branch[]>(`${API}/public/branches`).then((r) => {
+      const branch = r.data.find((b) => b.id === Number(branchId));
+      if (branch) {
+        setScreen({ name: "menu", branch, orderType: "delivery", productId: productId ? Number(productId) : undefined });
+      }
+    }).catch(() => {});
+  }, []);
 
   if (screen.name === "branches") {
     return (
@@ -43,6 +61,7 @@ export default function OrderPage() {
       <WebsiteMenu
         branch={screen.branch}
         orderType={screen.orderType}
+        initialProductId={screen.productId}
         onBack={() => setScreen({ name: "branches" })}
         onTrack={() => setScreen({ name: "track" })}
         onCheckout={(cart) =>
