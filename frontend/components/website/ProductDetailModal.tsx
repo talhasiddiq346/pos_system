@@ -165,16 +165,16 @@ export default function ProductDetailModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center sm:p-4"
+      className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center sm:p-4 h-dvh"
       onClick={onClose}
     >
       <div
-        className="bg-white w-full sm:max-w-4xl sm:rounded-2xl rounded-t-3xl shadow-2xl h-[92vh] sm:h-auto sm:max-h-[92vh] flex flex-col lg:flex-row overflow-hidden min-h-0"
+        className="bg-white w-full sm:max-w-4xl sm:rounded-2xl rounded-t-3xl shadow-2xl h-[92dvh] sm:h-auto sm:max-h-[92dvh] flex flex-col lg:flex-row overflow-hidden min-h-0"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Image column */}
         <div className="lg:w-[40%] shrink-0 p-4 sm:p-6 flex flex-col">
-          <div className="w-full h-[26vh] sm:h-auto sm:aspect-square rounded-xl overflow-hidden bg-[#F5F1EB] flex items-center justify-center">
+          <div className="w-full h-[26dvh] sm:h-auto sm:aspect-square rounded-xl overflow-hidden bg-[#F5F1EB] flex items-center justify-center">
             {imgSrc ? (
               <img src={imgSrc} alt={product.name} className="w-full h-full object-cover" />
             ) : (
