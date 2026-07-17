@@ -1,60 +1,62 @@
 "use client";
-import { useEffect, useState } from "react";
+import { Swiper, SwiperSlide } from "swiper/react";
+import { Navigation, Pagination, Autoplay } from "swiper/modules";
+import "swiper/css";
+import "swiper/css/navigation";
+import "swiper/css/pagination";
 
 type Banner = { image_url: string; link?: string | null };
 
 export default function BannerCarousel({ banners }: { banners: Banner[] }) {
-  const [index, setIndex] = useState(0);
-
-  useEffect(() => {
-    if (banners.length <= 1) return;
-    const t = setInterval(() => setIndex((i) => (i + 1) % banners.length), 5000);
-    return () => clearInterval(t);
-  }, [banners.length]);
-
   if (banners.length === 0) return null;
 
-  const current = banners[Math.min(index, banners.length - 1)];
-
-  function go(delta: number) {
-    setIndex((i) => (i + delta + banners.length) % banners.length);
-  }
-
-  const slide = (
-    <div className="relative w-full h-56 sm:h-72 md:h-112 overflow-hidden bg-[#EDE8E1]">
-      <img src={current.image_url} alt="" className="w-full h-full object-cover" />
-      <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent" />
+  return (
+    <div className="px-2 sm:px-4 py-6 md:py-8 relative">
+      <Swiper
+        modules={[Navigation, Pagination, Autoplay]}
+        pagination={{ clickable: true }}
+        navigation={{
+          nextEl: ".swiper-button-next-promo",
+          prevEl: ".swiper-button-prev-promo",
+        }}
+        autoplay={banners.length > 1 ? { delay: 5000, disableOnInteraction: false } : false}
+        loop={banners.length > 1}
+        className="w-full rounded-md sm:rounded-3xl"
+      >
+        {banners.map((banner, i) => {
+          const slide = (
+            <div className="relative rounded-md sm:rounded-3xl overflow-hidden h-56 sm:h-72 md:h-112 bg-[#EDE8E1]">
+              <img src={banner.image_url} alt="" className="w-full h-full object-cover" />
+            </div>
+          );
+          return (
+            <SwiperSlide key={i}>
+              {banner.link ? <a href={banner.link}>{slide}</a> : slide}
+            </SwiperSlide>
+          );
+        })}
+      </Swiper>
 
       {banners.length > 1 && (
         <>
           <button
-            onClick={(e) => { e.preventDefault(); go(-1); }}
             aria-label="Previous slide"
-            className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-white/90 backdrop-blur-sm shadow-md flex items-center justify-center text-lg font-bold text-[#1A1613] hover:bg-white"
+            className="swiper-button-prev-promo absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 z-30 w-10 h-20 bg-black/60 rounded-r-md flex items-center justify-center hover:bg-black transition-colors cursor-pointer"
           >
-            ‹
+            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
           </button>
           <button
-            onClick={(e) => { e.preventDefault(); go(1); }}
             aria-label="Next slide"
-            className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-white/90 backdrop-blur-sm shadow-md flex items-center justify-center text-lg font-bold text-[#1A1613] hover:bg-white"
+            className="swiper-button-next-promo absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 z-30 w-10 h-20 bg-black/60 rounded-l-md flex items-center justify-center hover:bg-black transition-colors cursor-pointer"
           >
-            ›
+            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
           </button>
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2">
-            {banners.map((_, i) => (
-              <button
-                key={i}
-                onClick={(e) => { e.preventDefault(); setIndex(i); }}
-                aria-label={`Go to slide ${i + 1}`}
-                className={`h-2 rounded-full transition-all ${i === index ? "w-6 bg-white" : "w-2 bg-white/60"}`}
-              />
-            ))}
-          </div>
         </>
       )}
     </div>
   );
-
-  return current.link ? <a href={current.link}>{slide}</a> : slide;
 }

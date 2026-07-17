@@ -6,6 +6,7 @@ import type { Product, OrderWithItems, User } from "@/lib/types";
 import type { CartItem } from "@/components/pos/CartPanel";
 import type { OrderType } from "./CallCustomerForm";
 import MenuGrid from "@/components/pos/MenuGrid";
+import ProductOptionsModal, { PosSelection } from "@/components/pos/ProductOptionsModal";
 import CallCustomerForm from "./CallCustomerForm";
 import CallCartPanel from "./CallCartPanel";
 
@@ -26,7 +27,7 @@ export default function CallCenterScreen({ user }: { user: User }) {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
-  const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [productModal, setProductModal] = useState<Product | null>(null);
   const [cart, setCart] = useState<CartItem[]>([]);
 
   const [customerName, setCustomerName] = useState("");
@@ -47,7 +48,6 @@ export default function CallCenterScreen({ user }: { user: User }) {
     if (!selectedBranchId) { setProducts([]); return; }
     setLoadingProducts(true);
     setCart([]);
-    setExpandedId(null);
     setSuccess("");
     api.get<Product[]>("/products", { params: { branch_id: selectedBranchId } })
       .then((res) => { setProducts(res.data); setLoadingProducts(false); });
@@ -58,13 +58,20 @@ export default function CallCenterScreen({ user }: { user: User }) {
     setSelectedBranchName(branches.find((b) => b.id === id)?.name ?? "");
   }
 
-  function addToCart(p: Product, variantId: number | null, variantName: string | null, price: number) {
-    const key = `${p.id}-${variantId ?? "base"}`;
+  function addToCart(p: Product, selection: PosSelection) {
+    const addonKey = [...selection.addon_option_ids].sort((a, b) => a - b).join(",");
+    const key = `${p.id}-${selection.variant_id ?? "base"}-${addonKey}`;
     setCart((prev) => {
       const existing = prev.find((c) => c.key === key);
-      if (existing) return prev.map((c) => c.key === key ? { ...c, quantity: c.quantity + 1 } : c);
-      return [...prev, { key, product_id: p.id, product_name: p.name, variant_id: variantId, variant_name: variantName, unit_price: price, quantity: 1 }];
+      if (existing) return prev.map((c) => c.key === key ? { ...c, quantity: c.quantity + selection.quantity } : c);
+      return [...prev, {
+        key, product_id: p.id, product_name: p.name,
+        variant_id: selection.variant_id, variant_name: selection.variant_name,
+        unit_price: selection.unit_price, quantity: selection.quantity,
+        addon_option_ids: selection.addon_option_ids, addon_summary: selection.addon_summary,
+      }];
     });
+    setProductModal(null);
   }
 
   async function handleCheckout() {
@@ -87,6 +94,7 @@ export default function CallCenterScreen({ user }: { user: User }) {
           product_id: c.product_id,
           variant_id: c.variant_id,
           quantity: c.quantity,
+          addon_option_ids: c.addon_option_ids || [],
         })),
         customer_name: customerName,
         customer_phone: customerPhone || null,
@@ -164,12 +172,7 @@ export default function CallCenterScreen({ user }: { user: User }) {
               {loadingProducts ? (
                 <p className="text-sm text-[#494D46]">Loading menu...</p>
               ) : (
-                <MenuGrid
-                  products={products}
-                  expandedId={expandedId}
-                  onToggleExpand={(id) => setExpandedId(expandedId === id ? null : id)}
-                  onAddToCart={addToCart}
-                />
+                <MenuGrid products={products} onOpenProduct={setProductModal} />
               )}
             </div>
             <div className="w-full lg:w-80 shrink-0">
@@ -189,6 +192,14 @@ export default function CallCenterScreen({ user }: { user: User }) {
             </div>
           </div>
         </>
+      )}
+
+      {productModal && (
+        <ProductOptionsModal
+          product={productModal}
+          onClose={() => setProductModal(null)}
+          onConfirm={(selection) => addToCart(productModal, selection)}
+        />
       )}
     </div>
   );

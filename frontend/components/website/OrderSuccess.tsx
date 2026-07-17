@@ -33,9 +33,9 @@ export default function OrderSuccess({
       }}
     >
       {/* Decorative floating shapes */}
-      <div className="absolute top-20 left-8 w-16 h-16 rounded-full bg-[#F0A93B]/20 blur-xl" />
-      <div className="absolute bottom-32 right-12 w-20 h-20 rounded-full bg-[#E8542F]/20 blur-xl" />
-      <div className="absolute top-1/2 left-1/4 w-12 h-12 rounded-full bg-[#F0A93B]/15 blur-2xl" />
+      <div className="absolute top-20 left-8 w-16 h-16 rounded-full blur-xl" style={{ background: `${site.secondaryColor}66` }} />
+      <div className="absolute bottom-32 right-12 w-20 h-20 rounded-full blur-xl" style={{ background: `${site.primaryColor}33` }} />
+      <div className="absolute top-1/2 left-1/4 w-12 h-12 rounded-full blur-2xl" style={{ background: `${site.secondaryColor}44` }} />
 
       <div className="relative z-10 w-full max-w-md">
         {/* Success icon */}
@@ -63,15 +63,16 @@ export default function OrderSuccess({
           {/* Order code card */}
           <button
             onClick={copyCode}
-            className="mt-6 mx-auto w-full bg-gradient-to-br from-[#FFF5F1] to-[#FFE8E0] border-2 border-dashed border-[#E8542F]/40 rounded-2xl px-5 py-4 hover:border-[#E8542F] transition-colors group"
+            className="mt-6 mx-auto w-full border-2 border-dashed rounded-2xl px-5 py-4 transition-colors group"
+            style={{ background: `${site.secondaryColor}33`, borderColor: `${site.primaryColor}66` }}
           >
             <p className="text-[10px] uppercase tracking-widest text-[#6B6259] font-semibold mb-1">
               Order Code
             </p>
-            <p className="text-2xl md:text-3xl font-bold font-mono text-[#E8542F] tracking-wider">
+            <p className="text-2xl md:text-3xl font-bold font-mono tracking-wider" style={{ color: site.primaryColor }}>
               #{orderCode}
             </p>
-            <p className="text-[10px] text-[#6B6259] mt-1.5 group-hover:text-[#E8542F]">
+            <p className="text-[10px] text-[#6B6259] mt-1.5">
               Tap to copy
             </p>
           </button>
@@ -91,7 +92,8 @@ export default function OrderSuccess({
           {/* Track button — primary */}
           <button
             onClick={onTrack}
-            className="w-full mt-6 py-3.5 rounded-full bg-gradient-to-r from-[#E8542F] to-[#D64822] text-white font-bold text-base flex items-center justify-center gap-2 shadow-lg active:scale-[0.98] transition-transform"
+            className="w-full mt-6 py-3.5 rounded-full text-white font-bold text-base flex items-center justify-center gap-2 shadow-lg active:scale-[0.98] transition-transform"
+            style={{ background: site.primaryColor }}
           >
             <span>📦</span>
             Track Your Order

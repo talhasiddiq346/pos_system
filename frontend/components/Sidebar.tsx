@@ -9,6 +9,7 @@ export type SectionKey =
   | "delivery"
   | "products"
   | "pos"
+  | "dine-in"
   | "receipts"
   | "orders"
   | "kitchen"
@@ -31,6 +32,7 @@ export const SECTIONS_BY_ROLE: Record<Role, SectionDef[]> = {
     { key: "call-center", label: "Call center" },
     { key: "products", label: "Products" },
     { key: "pos", label: "POS" },
+    { key: "dine-in", label: "Dine In" },
     { key: "receipts", label: "Receipts" },
     { key: "cash-report", label: "Cash report" },
     { key: "reports", label: "Reports" },
@@ -42,6 +44,7 @@ export const SECTIONS_BY_ROLE: Record<Role, SectionDef[]> = {
     { key: "staff", label: "Staff" },
     { key: "products", label: "Products" },
     { key: "pos", label: "POS" },
+    { key: "dine-in", label: "Dine In" },
     { key: "receipts", label: "Receipts" },
     { key: "cash-report", label: "Cash report" },
     { key: "reports", label: "Reports" },
@@ -49,6 +52,7 @@ export const SECTIONS_BY_ROLE: Record<Role, SectionDef[]> = {
   ],
   cashier: [
     { key: "pos", label: "POS" },
+    { key: "dine-in", label: "Dine In" },
     { key: "receipts", label: "Receipts" },
     { key: "cash-submissions", label: "Cash submissions" },
     { key: "overview", label: "Overview" },

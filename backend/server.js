@@ -19,6 +19,7 @@ import cashierRoutes from "./routes/cashier.js";
 import reportRoutes from "./routes/reports.js";
 import publicRoutes from "./routes/public.js";
 import settingsRoutes from "./routes/settings.js";
+import tablesRoutes from "./routes/tables.js";
 
 // ── Phase 11 imports
 import analyticsRoutes from "./routes/analytics.js";
@@ -153,6 +154,7 @@ app.use("/api/cashier", cashierRoutes);
 app.use("/api/reports", reportRoutes);
 app.use("/api/public", publicRoutes);
 app.use("/api/settings", settingsRoutes);
+app.use("/api/tables", tablesRoutes);
 
 // ── Phase 11 routes
 app.use("/api/reports", analyticsRoutes);

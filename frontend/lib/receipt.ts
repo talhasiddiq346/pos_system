@@ -1,17 +1,5 @@
 import type { OrderWithItems } from "./types";
 
-const QUOTES = [
-  "Good food is the foundation of genuine happiness.",
-  "One cannot think well, love well, sleep well, if one has not dined well.",
-  "Food is our common ground, a universal experience.",
-  "Life is uncertain. Eat dessert first.",
-  "First we eat, then we do everything else.",
-];
-
-function randomQuote() {
-  return QUOTES[Math.floor(Math.random() * QUOTES.length)];
-}
-
 export function openPrintableReceipt(
   order: OrderWithItems,
   branchName: string,
@@ -24,105 +12,100 @@ export function openPrintableReceipt(
     order.source === "call_center" ? "Call Center" :
     order.source === "online" ? "Online" : "Walk-in";
 
+  const tableLabel = (order as any).restaurant_table_name || order.table_number;
+  const orderTypeLabel =
+    order.order_type === "dine_in" ? `Dine In${tableLabel ? ` · ${tableLabel}` : ""}` :
+    order.order_type === "delivery" ? "Delivery" : "Takeaway";
+
   const agentName = (order as any).created_by_name || staffName || "Staff";
   const isCallCenter = order.source === "call_center";
 
-  const rows = order.items.map((it) => `
+  const rows = order.items.map((it) => {
+    const addons = (it as any).selected_addons as { name: string; price: number }[] | undefined;
+    const addonLines = Array.isArray(addons) && addons.length > 0
+      ? `<div style="font-size:11px;color:#888;margin-top:1px;">+ ${addons.map((a) => a.name).join(", ")}</div>`
+      : "";
+    return `
     <tr>
-      <td style="padding:7px 0;border-bottom:1px solid #f0f0f0;">
+      <td style="padding:8px 0;border-bottom:1px solid #eee;">
         <div style="font-weight:600;font-size:13px;">${it.product_name}</div>
         ${it.variant_name ? `<div style="font-size:11px;color:#888;margin-top:1px;">${it.variant_name}</div>` : ""}
+        ${addonLines}
       </td>
-      <td style="padding:7px 0;border-bottom:1px solid #f0f0f0;text-align:center;color:#888;font-size:12px;">×${it.quantity}</td>
-      <td style="padding:7px 0;border-bottom:1px solid #f0f0f0;text-align:right;font-family:monospace;font-size:13px;">
+      <td style="padding:8px 0;border-bottom:1px solid #eee;text-align:center;color:#888;font-size:12px;">×${it.quantity}</td>
+      <td style="padding:8px 0;border-bottom:1px solid #eee;text-align:right;font-family:'SF Mono',Consolas,monospace;font-size:13px;">
         Rs ${(Number(it.unit_price) * it.quantity).toFixed(2)}
       </td>
-    </tr>`).join("");
+    </tr>`;
+  }).join("");
+
+  const discountAmount = Number((order as any).discount_amount || 0);
+  const taxAmount = Number((order as any).tax_amount || 0);
+  const deliveryFee = Number((order as any).delivery_fee || 0);
+  const voucherCode = (order as any).voucher_code;
 
   win.document.write(`
     <!DOCTYPE html>
     <html>
     <head>
-      <title>Receipt #${order.id}</title>
+      <title>Receipt #${order.order_code || order.id}</title>
       <style>
         * { margin:0; padding:0; box-sizing:border-box; }
         body {
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+          font-family: Georgia, 'Times New Roman', serif;
           font-size: 13px;
-          color: #111;
+          color: #1a1a1a;
           background: #fff;
-          padding: 28px 24px;
-          max-width: 320px;
+          padding: 30px 26px;
+          max-width: 340px;
           margin: 0 auto;
         }
 
-        /* Header */
-        .header {
-          text-align: center;
-          padding-bottom: 16px;
-        }
-        .header .logo {
-          font-size: 22px;
-          font-weight: 800;
-          letter-spacing: -1px;
+        .header { text-align: center; padding-bottom: 14px; }
+        .header .name {
+          font-size: 21px;
+          font-weight: 700;
+          letter-spacing: 0.5px;
           color: #111;
         }
         .header .tagline {
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
           font-size: 10px;
           color: #999;
-          margin-top: 2px;
-          letter-spacing: 1px;
+          margin-top: 3px;
+          letter-spacing: 1.5px;
           text-transform: uppercase;
         }
-        .header .order-num {
-          display: inline-block;
-          margin-top: 8px;
-          font-size: 11px;
-          font-weight: 600;
-          color: #fff;
-          background: #111;
-          padding: 3px 12px;
-          border-radius: 20px;
-          letter-spacing: 0.5px;
-        }
 
-        .divider-dash { border:none; border-top:1px dashed #ccc; margin:14px 0; }
+        .divider { border:none; border-top:1px solid #ddd; margin:14px 0; }
         .divider-bold { border:none; border-top:2px solid #111; margin:14px 0; }
 
-        /* Meta info */
-        .meta { font-size:11px; line-height:2; }
-        .meta-row { display:flex; justify-content:space-between; }
-        .meta-label { color:#999; }
-        .badge {
-          font-size:9px;
-          font-weight:700;
-          padding:2px 8px;
-          border-radius:20px;
-          background:#f0f0f0;
-          color:#555;
-          text-transform:uppercase;
-          letter-spacing:0.5px;
-        }
-
-        /* Customer box */
-        .customer-box {
-          background:#f8f8f8;
-          border-left:3px solid #111;
-          border-radius:0 6px 6px 0;
-          padding:10px 12px;
-          margin:12px 0;
-          font-size:12px;
+        .meta {
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+          font-size:11.5px;
           line-height:1.9;
         }
-        .customer-name {
+        .meta-row { display:flex; justify-content:space-between; }
+        .meta-label { color:#888; }
+        .order-code {
+          font-family:'SF Mono',Consolas,monospace;
           font-weight:700;
-          font-size:14px;
-          margin-bottom:2px;
+          font-size: 13px;
         }
-        .customer-detail { color:#555; }
 
-        /* Items table */
-        table { width:100%; border-collapse:collapse; margin-top:4px; }
+        .customer-box {
+          background:#fafafa;
+          border-radius:6px;
+          padding:10px 12px;
+          margin:12px 0;
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+          font-size:12px;
+          line-height:1.8;
+        }
+        .customer-name { font-weight:700; font-size:13px; }
+        .customer-detail { color:#666; }
+
+        table { width:100%; border-collapse:collapse; margin-top:4px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
         .table-head th {
           font-size:10px;
           text-transform:uppercase;
@@ -130,20 +113,20 @@ export function openPrintableReceipt(
           color:#999;
           padding:4px 0 6px;
           font-weight:600;
+          border-bottom: 1px solid #ddd;
         }
         .table-head th:nth-child(2) { text-align:center; }
         .table-head th:last-child { text-align:right; }
 
-        /* Total */
-        .total-section { padding-top:4px; }
+        .total-section { padding-top:6px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
         .total-row {
           display:flex;
           justify-content:space-between;
           padding:4px 0;
-          font-size:12px;
+          font-size:12.5px;
           color:#555;
         }
-        .total-row .amt { font-family:monospace; }
+        .total-row .amt { font-family:'SF Mono',Consolas,monospace; }
         .grand-total {
           display:flex;
           justify-content:space-between;
@@ -151,44 +134,38 @@ export function openPrintableReceipt(
           padding:10px 0 6px;
           border-top:2px solid #111;
           margin-top:6px;
-          font-size:17px;
-          font-weight:800;
+          font-size:18px;
+          font-weight:700;
         }
-        .grand-total .amt { font-family:monospace; }
+        .grand-total .amt { font-family:'SF Mono',Consolas,monospace; }
 
-        /* Payment pill */
         .payment-pill {
           display:inline-block;
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
           font-size:10px;
           font-weight:700;
-          padding:3px 10px;
-          border-radius:20px;
+          padding:4px 12px;
+          border-radius:3px;
           border:1px solid #111;
           text-transform:uppercase;
           letter-spacing:0.5px;
         }
 
-        /* Footer */
         .footer {
           text-align:center;
-          margin-top:20px;
+          margin-top:22px;
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
         }
         .footer .thankyou {
+          font-family: Georgia, serif;
           font-size:15px;
           font-weight:700;
-          margin-bottom:6px;
+          margin-bottom:4px;
         }
-        .footer .quote {
-          font-size:10px;
+        .footer .note {
+          font-size:10.5px;
           color:#999;
-          font-style:italic;
           line-height:1.6;
-          padding:0 8px;
-        }
-        .footer .visit-again {
-          font-size:11px;
-          color:#666;
-          margin-top:6px;
         }
 
         @media print { button { display:none; } }
@@ -197,14 +174,17 @@ export function openPrintableReceipt(
     <body>
 
       <div class="header">
-        <div class="logo">${branchName}</div>
+        <div class="name">${branchName}</div>
         <div class="tagline">Official Receipt</div>
-        <div class="order-num">Order #${order.id}</div>
       </div>
 
       <hr class="divider-bold">
 
       <div class="meta">
+        <div class="meta-row">
+          <span class="meta-label">Order No.</span>
+          <span class="order-code">${order.order_code || `#${order.id}`}</span>
+        </div>
         <div class="meta-row">
           <span class="meta-label">Date</span>
           <span>${new Date(order.created_at).toLocaleDateString("en-PK", { day:"numeric", month:"short", year:"numeric" })}</span>
@@ -214,22 +194,26 @@ export function openPrintableReceipt(
           <span>${new Date(order.created_at).toLocaleTimeString("en-PK", { hour:"2-digit", minute:"2-digit" })}</span>
         </div>
         <div class="meta-row">
-          <span class="meta-label">Source</span>
-          <span><span class="badge">${sourceLabel}</span></span>
+          <span class="meta-label">Order Type</span>
+          <span>${orderTypeLabel}</span>
         </div>
         <div class="meta-row">
-          <span class="meta-label">${isCallCenter ? "Agent" : "Cashier"}</span>
+          <span class="meta-label">Source</span>
+          <span>${sourceLabel}</span>
+        </div>
+        <div class="meta-row">
+          <span class="meta-label">${isCallCenter ? "Agent" : "Served by"}</span>
           <span>${agentName}</span>
         </div>
       </div>
 
       ${order.customer_name ? `
         <div class="customer-box">
-          <div class="customer-name">👤 ${order.customer_name}</div>
-          ${(order as any).customer_phone ? `<div class="customer-detail">📞 ${(order as any).customer_phone}</div>` : ""}
-          ${(order as any).customer_address ? `<div class="customer-detail">📍 ${(order as any).customer_address}</div>` : ""}
+          <div class="customer-name">${order.customer_name}</div>
+          ${(order as any).customer_phone ? `<div class="customer-detail">${(order as any).customer_phone}</div>` : ""}
+          ${(order as any).customer_address ? `<div class="customer-detail">${(order as any).customer_address}</div>` : ""}
         </div>
-      ` : "<hr class='divider-dash'>"}
+      ` : `<hr class="divider">`}
 
       <table>
         <thead>
@@ -242,28 +226,40 @@ export function openPrintableReceipt(
         <tbody>${rows}</tbody>
       </table>
 
-      <hr class="divider-dash">
-
       <div class="total-section">
         <div class="total-row">
           <span>Subtotal</span>
           <span class="amt">Rs ${Number(order.subtotal).toFixed(2)}</span>
         </div>
+        ${discountAmount > 0 ? `
+        <div class="total-row" style="color:#1a7a4a;">
+          <span>Discount${voucherCode ? ` (${voucherCode})` : ""}</span>
+          <span class="amt">− Rs ${discountAmount.toFixed(2)}</span>
+        </div>` : ""}
+        ${deliveryFee > 0 ? `
+        <div class="total-row">
+          <span>Delivery Fee</span>
+          <span class="amt">Rs ${deliveryFee.toFixed(2)}</span>
+        </div>` : ""}
+        ${taxAmount > 0 ? `
+        <div class="total-row">
+          <span>Tax</span>
+          <span class="amt">Rs ${taxAmount.toFixed(2)}</span>
+        </div>` : ""}
         <div class="grand-total">
           <span>Total</span>
           <span class="amt">Rs ${Number(order.total).toFixed(2)}</span>
         </div>
         <div style="margin-top:8px;text-align:right;">
-          <span class="payment-pill">${order.payment_method === "cash" ? "💵 Cash" : "💳 Card"}</span>
+          <span class="payment-pill">${order.payment_method === "cash" ? "Cash" : "Card"}</span>
         </div>
       </div>
 
-      <hr class="divider-dash">
+      <hr class="divider">
 
       <div class="footer">
-        <div class="thankyou">Thank you for your order! 🙏</div>
-        <div class="quote">"${randomQuote()}"</div>
-        <div class="visit-again">We hope to see you again soon</div>
+        <div class="thankyou">Thank you for dining with us</div>
+        <div class="note">Please keep this receipt for your records.<br>We look forward to serving you again.</div>
       </div>
 
       <script>window.onload = () => { window.focus(); window.print(); }</script>

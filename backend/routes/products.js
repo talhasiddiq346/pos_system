@@ -24,6 +24,39 @@ const cloudUpload = multer({
 });
 
 // ─────────────────────────────────────────────
+// Fetch addon groups (+ nested options) for a set of products, keyed by product_id
+// ─────────────────────────────────────────────
+export async function getAddonGroupsByProduct(productIds) {
+  if (productIds.length === 0) return {};
+
+  const groupsRes = await pool.query(
+    "SELECT * FROM addon_groups WHERE product_id = ANY($1::int[]) ORDER BY sort_order, id",
+    [productIds]
+  );
+  const groupIds = groupsRes.rows.map((g) => g.id);
+
+  const optionsRes = groupIds.length
+    ? await pool.query(
+        "SELECT * FROM addon_options WHERE group_id = ANY($1::int[]) ORDER BY sort_order, id",
+        [groupIds]
+      )
+    : { rows: [] };
+
+  const optionsByGroup = {};
+  for (const o of optionsRes.rows) {
+    if (!optionsByGroup[o.group_id]) optionsByGroup[o.group_id] = [];
+    optionsByGroup[o.group_id].push(o);
+  }
+
+  const groupsByProduct = {};
+  for (const g of groupsRes.rows) {
+    if (!groupsByProduct[g.product_id]) groupsByProduct[g.product_id] = [];
+    groupsByProduct[g.product_id].push({ ...g, options: optionsByGroup[g.id] || [] });
+  }
+  return groupsByProduct;
+}
+
+// ─────────────────────────────────────────────
 // SMART DELETE — handles both Cloudinary and legacy local files
 // ─────────────────────────────────────────────
 async function deleteProductImage(imageUrl, imagePublicId) {
@@ -88,7 +121,13 @@ router.get(
       variantsByProduct[v.product_id].push(v);
     }
 
-    res.json(products.map((p) => ({ ...p, variants: variantsByProduct[p.id] || [] })));
+    const addonGroupsByProduct = await getAddonGroupsByProduct(ids);
+
+    res.json(products.map((p) => ({
+      ...p,
+      variants: variantsByProduct[p.id] || [],
+      addon_groups: addonGroupsByProduct[p.id] || [],
+    })));
   }
 );
 
@@ -265,21 +304,24 @@ router.delete(
 // POST create product (no image yet)
 // ═══════════════════════════════════════════════════
 router.post("/", requireAuth, requireRole("super_admin", "branch_admin"), async (req, res) => {
-  const { name, price, category, branch_id } = req.body;
+  const { name, price, category, branch_id, discounted_price } = req.body;
   if (!name || price === undefined || price === null) {
     return res.status(400).json({ error: "Name and price are required" });
   }
   if (Number(price) < 0) {
     return res.status(400).json({ error: "Price cannot be negative" });
   }
+  if (discounted_price !== undefined && discounted_price !== null && Number(discounted_price) >= Number(price)) {
+    return res.status(400).json({ error: "Discounted price must be lower than the actual price" });
+  }
 
   const finalBranchId = req.user.role === "branch_admin" ? req.user.branch_id : branch_id;
   if (!finalBranchId) return res.status(400).json({ error: "Branch is required" });
 
   const result = await pool.query(
-    `INSERT INTO products (branch_id, name, price, category)
-     VALUES ($1, $2, $3, $4) RETURNING *`,
-    [finalBranchId, name, price, category || null]
+    `INSERT INTO products (branch_id, name, price, category, discounted_price)
+     VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+    [finalBranchId, name, price, category || null, discounted_price ? Number(discounted_price) : null]
   );
   res.status(201).json({ ...result.rows[0], variants: [] });
 });
@@ -289,7 +331,7 @@ router.post("/", requireAuth, requireRole("super_admin", "branch_admin"), async 
 // ═══════════════════════════════════════════════════
 router.patch("/:id", requireAuth, requireRole("super_admin", "branch_admin"), async (req, res) => {
   const { id } = req.params;
-  const { name, price, category, is_available, is_popular } = req.body;
+  const { name, price, category, is_available, is_popular, discounted_price } = req.body;
 
   const existing = await pool.query("SELECT * FROM products WHERE id = $1", [id]);
   if (existing.rows.length === 0) return res.status(404).json({ error: "Product not found" });
@@ -303,15 +345,25 @@ router.patch("/:id", requireAuth, requireRole("super_admin", "branch_admin"), as
     return res.status(400).json({ error: "Price cannot be negative" });
   }
 
+  const finalPrice = price !== undefined && price !== null ? Number(price) : Number(product.price);
+  if (discounted_price !== undefined && discounted_price !== null && Number(discounted_price) >= finalPrice) {
+    return res.status(400).json({ error: "Discounted price must be lower than the actual price" });
+  }
+
   const result = await pool.query(
     `UPDATE products SET
        name = COALESCE($1, name),
        price = COALESCE($2, price),
        category = COALESCE($3, category),
        is_available = COALESCE($4, is_available),
-       is_popular = COALESCE($5, is_popular)
-     WHERE id = $6 RETURNING *`,
-    [name ?? null, price ?? null, category ?? null, is_available ?? null, is_popular ?? null, id]
+       is_popular = COALESCE($5, is_popular),
+       discounted_price = $6
+     WHERE id = $7 RETURNING *`,
+    [
+      name ?? null, price ?? null, category ?? null, is_available ?? null, is_popular ?? null,
+      discounted_price !== undefined ? (discounted_price === null ? null : Number(discounted_price)) : product.discounted_price,
+      id,
+    ]
   );
   res.json(result.rows[0]);
 });
@@ -496,6 +548,149 @@ router.delete("/variants/:id", requireAuth, requireRole("super_admin", "branch_a
   await pool.query("DELETE FROM product_variants WHERE id = $1", [id]);
   res.json({ ok: true });
 });
+
+// ═══════════════════════════════════════════════════
+// ─── ADDON GROUPS (e.g. "Choose Patty", "Add Cheese") ───
+// ═══════════════════════════════════════════════════
+
+async function getGroupWithBranch(id) {
+  const result = await pool.query(
+    `SELECT ag.*, p.branch_id FROM addon_groups ag
+     JOIN products p ON p.id = ag.product_id WHERE ag.id = $1`,
+    [id]
+  );
+  return result.rows[0];
+}
+
+async function getOptionWithBranch(id) {
+  const result = await pool.query(
+    `SELECT ao.*, ag.product_id, p.branch_id FROM addon_options ao
+     JOIN addon_groups ag ON ag.id = ao.group_id
+     JOIN products p ON p.id = ag.product_id WHERE ao.id = $1`,
+    [id]
+  );
+  return result.rows[0];
+}
+
+router.post("/:productId/addon-groups", requireAuth, requireRole("super_admin", "branch_admin"), async (req, res) => {
+  const { productId } = req.params;
+  const { title, selection_type, required } = req.body;
+
+  if (!title?.trim()) return res.status(400).json({ error: "Group title is required" });
+  if (!["single", "multiple"].includes(selection_type)) {
+    return res.status(400).json({ error: "selection_type must be 'single' or 'multiple'" });
+  }
+
+  const productResult = await pool.query("SELECT * FROM products WHERE id = $1", [productId]);
+  if (productResult.rows.length === 0) return res.status(404).json({ error: "Product not found" });
+  const product = productResult.rows[0];
+
+  if (req.user.role === "branch_admin" && product.branch_id !== req.user.branch_id) {
+    return res.status(403).json({ error: "You can only manage your own branch's products" });
+  }
+
+  const result = await pool.query(
+    `INSERT INTO addon_groups (product_id, title, selection_type, required)
+     VALUES ($1, $2, $3, $4) RETURNING *`,
+    [productId, title.trim(), selection_type, !!required]
+  );
+  res.status(201).json({ ...result.rows[0], options: [] });
+});
+
+router.patch("/addon-groups/:id", requireAuth, requireRole("super_admin", "branch_admin"), async (req, res) => {
+  const { id } = req.params;
+  const { title, selection_type, required } = req.body;
+
+  const group = await getGroupWithBranch(id);
+  if (!group) return res.status(404).json({ error: "Group not found" });
+  if (req.user.role === "branch_admin" && group.branch_id !== req.user.branch_id) {
+    return res.status(403).json({ error: "You can only manage your own branch's products" });
+  }
+  if (selection_type && !["single", "multiple"].includes(selection_type)) {
+    return res.status(400).json({ error: "selection_type must be 'single' or 'multiple'" });
+  }
+
+  const result = await pool.query(
+    `UPDATE addon_groups SET
+       title = COALESCE($1, title),
+       selection_type = COALESCE($2, selection_type),
+       required = COALESCE($3, required)
+     WHERE id = $4 RETURNING *`,
+    [title?.trim() ?? null, selection_type ?? null, required ?? null, id]
+  );
+  res.json(result.rows[0]);
+});
+
+router.delete("/addon-groups/:id", requireAuth, requireRole("super_admin", "branch_admin"), async (req, res) => {
+  const { id } = req.params;
+  const group = await getGroupWithBranch(id);
+  if (!group) return res.status(404).json({ error: "Group not found" });
+  if (req.user.role === "branch_admin" && group.branch_id !== req.user.branch_id) {
+    return res.status(403).json({ error: "You can only manage your own branch's products" });
+  }
+
+  await pool.query("DELETE FROM addon_groups WHERE id = $1", [id]);
+  res.json({ ok: true });
+});
+
+router.post("/addon-groups/:groupId/options", requireAuth, requireRole("super_admin", "branch_admin"), async (req, res) => {
+  const { groupId } = req.params;
+  const { name, price } = req.body;
+
+  if (!name?.trim()) return res.status(400).json({ error: "Option name is required" });
+  if (price === undefined || Number(price) < 0) {
+    return res.status(400).json({ error: "Price must be zero or greater" });
+  }
+
+  const group = await getGroupWithBranch(groupId);
+  if (!group) return res.status(404).json({ error: "Group not found" });
+  if (req.user.role === "branch_admin" && group.branch_id !== req.user.branch_id) {
+    return res.status(403).json({ error: "You can only manage your own branch's products" });
+  }
+
+  const result = await pool.query(
+    `INSERT INTO addon_options (group_id, name, price) VALUES ($1, $2, $3) RETURNING *`,
+    [groupId, name.trim(), Number(price)]
+  );
+  res.status(201).json(result.rows[0]);
+});
+
+router.patch("/addon-options/:id", requireAuth, requireRole("super_admin", "branch_admin"), async (req, res) => {
+  const { id } = req.params;
+  const { name, price, is_available } = req.body;
+
+  const option = await getOptionWithBranch(id);
+  if (!option) return res.status(404).json({ error: "Option not found" });
+  if (req.user.role === "branch_admin" && option.branch_id !== req.user.branch_id) {
+    return res.status(403).json({ error: "You can only manage your own branch's products" });
+  }
+  if (price !== undefined && Number(price) < 0) {
+    return res.status(400).json({ error: "Price cannot be negative" });
+  }
+
+  const result = await pool.query(
+    `UPDATE addon_options SET
+       name = COALESCE($1, name),
+       price = COALESCE($2, price),
+       is_available = COALESCE($3, is_available)
+     WHERE id = $4 RETURNING *`,
+    [name?.trim() ?? null, price ?? null, is_available ?? null, id]
+  );
+  res.json(result.rows[0]);
+});
+
+router.delete("/addon-options/:id", requireAuth, requireRole("super_admin", "branch_admin"), async (req, res) => {
+  const { id } = req.params;
+  const option = await getOptionWithBranch(id);
+  if (!option) return res.status(404).json({ error: "Option not found" });
+  if (req.user.role === "branch_admin" && option.branch_id !== req.user.branch_id) {
+    return res.status(403).json({ error: "You can only manage your own branch's products" });
+  }
+
+  await pool.query("DELETE FROM addon_options WHERE id = $1", [id]);
+  res.json({ ok: true });
+});
+
 router.post(
   "/bulk",
   requireAuth,

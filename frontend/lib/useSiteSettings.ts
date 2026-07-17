@@ -23,6 +23,8 @@ export type SiteBranding = {
   secondaryColor: string;
   backgroundColor: string;
   activeVoucher: ActiveVoucher | null;
+  taxRate: number;
+  deliveryFee: number;
   loading: boolean;
 };
 
@@ -30,10 +32,12 @@ const DEFAULTS: Omit<SiteBranding, "loading"> = {
   brandName: "Tandoor",
   logoUrl: null,
   bannerImages: [],
-  primaryColor: "#E8542F",
-  secondaryColor: "#F0A93B",
-  backgroundColor: "#F4EBD9",
+  primaryColor: "#2563EB",
+  secondaryColor: "#DBEAFE",
+  backgroundColor: "#F3F4F6",
   activeVoucher: null,
+  taxRate: 0,
+  deliveryFee: 0,
 };
 
 export function useSiteSettings(): SiteBranding {
@@ -56,6 +60,8 @@ export function useSiteSettings(): SiteBranding {
         secondaryColor: d.secondary_color || DEFAULTS.secondaryColor,
         backgroundColor: d.background_color || DEFAULTS.backgroundColor,
         activeVoucher: voucherRes.data || null,
+        taxRate: Number(d.tax_rate) || 0,
+        deliveryFee: Number(d.delivery_fee) || 0,
         loading: false,
       });
     }).catch(() => {

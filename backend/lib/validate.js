@@ -35,6 +35,7 @@ export const createOrderSchema = z.object({
     product_id: z.number().int().positive(),
     variant_id: z.number().int().positive().optional().nullable(),
     quantity: z.number().int().min(1),
+    addon_option_ids: z.array(z.number().int().positive()).optional(),
   })).min(1, "Cart is empty"),
   customer_name: z.string().max(150).optional().nullable(),
   customer_phone: z.string().max(20).optional().nullable(),
@@ -42,7 +43,9 @@ export const createOrderSchema = z.object({
   payment_method: z.enum(["cash", "card"]).default("cash"),
   branch_id: z.number().int().positive().optional(),
   source: z.enum(["pos", "call_center", "online"]).optional(),
-  order_type: z.enum(["takeaway", "delivery"]).default("takeaway"),
+  order_type: z.enum(["takeaway", "delivery", "dine_in"]).default("takeaway"),
+  table_number: z.string().max(20).optional().nullable(),
+  voucher_code: z.string().max(50).optional().nullable(),
 });
 
 export const passwordSchema = z.object({

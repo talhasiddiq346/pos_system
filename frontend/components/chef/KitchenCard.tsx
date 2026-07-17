@@ -24,8 +24,9 @@ export default function KitchenCard({
   const [assignedTo, setAssignedTo] = useState<string | null>(null);
   const [hasRiders, setHasRiders] = useState<boolean | null>(null);
 
-  const orderType = (order as any).order_type as "takeaway" | "delivery";
+  const orderType = order.order_type;
   const isDelivery = orderType === "delivery";
+  const isDineIn = orderType === "dine_in";
   const assignment = (order as any).assignment;
 
   // Agar order ready + delivery hai, check karo rider available hai ya nahi
@@ -68,9 +69,9 @@ export default function KitchenCard({
           <div className="flex items-center gap-2">
             <span className="mono-num text-sm font-semibold text-[#14171A]">#{order.id}</span>
             <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${
-              isDelivery ? "bg-[#E0E7FF] text-[#3730A3]" : "bg-[#F0F1ED] text-[#494D46]"
+              isDelivery ? "bg-[#E0E7FF] text-[#3730A3]" : isDineIn ? "bg-[#FDEBD3] text-[#92610A]" : "bg-[#F0F1ED] text-[#494D46]"
             }`}>
-              {isDelivery ? "🛵 DELIVERY" : "🥡 TAKEAWAY"}
+              {isDelivery ? "🛵 DELIVERY" : isDineIn ? `🍽️ DINE IN${order.restaurant_table_name ? ` · ${order.restaurant_table_name}` : ""}` : "🥡 TAKEAWAY"}
             </span>
           </div>
           {order.customer_name && (
@@ -82,12 +83,17 @@ export default function KitchenCard({
 
       <ul className="px-4 py-3 space-y-1.5">
         {order.items.map((it) => (
-          <li key={it.id} className="flex items-center justify-between text-sm">
-            <span className="text-[#14171A]">
-              {it.product_name}
-              {it.variant_name && <span className="text-[#6B7068]"> · {it.variant_name}</span>}
-            </span>
-            <span className="mono-num text-[#6B7068] font-medium">×{it.quantity}</span>
+          <li key={it.id} className="text-sm">
+            <div className="flex items-center justify-between">
+              <span className="text-[#14171A]">
+                {it.product_name}
+                {it.variant_name && <span className="text-[#6B7068]"> · {it.variant_name}</span>}
+              </span>
+              <span className="mono-num text-[#6B7068] font-medium">×{it.quantity}</span>
+            </div>
+            {it.selected_addons && it.selected_addons.length > 0 && (
+              <p className="text-xs text-[#8A6D1F] mt-0.5">+ {it.selected_addons.map((a) => a.name).join(", ")}</p>
+            )}
           </li>
         ))}
       </ul>

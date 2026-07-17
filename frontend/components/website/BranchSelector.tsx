@@ -57,9 +57,9 @@ export default function BranchSelector({
         background: site.backgroundColor,
       }}
     >
-      {/* Background pattern — subtle warm texture */}
+      {/* Background pattern — subtle theme-colored texture */}
       <div className="absolute inset-0 opacity-30" style={{
-        backgroundImage: "radial-gradient(circle at 20% 30%, #E8542F22 0%, transparent 50%), radial-gradient(circle at 80% 70%, #F0A93B22 0%, transparent 50%)",
+        backgroundImage: `radial-gradient(circle at 20% 30%, ${site.primaryColor}22 0%, transparent 50%), radial-gradient(circle at 80% 70%, ${site.secondaryColor}55 0%, transparent 50%)`,
       }} />
 
       {/* Food image grid backdrop (decorative — blurred) */}
@@ -69,7 +69,7 @@ export default function BranchSelector({
             key={i}
             className="rounded-2xl bg-gradient-to-br"
             style={{
-              background: `linear-gradient(${i * 36}deg, #E8542F, #F0A93B, #D64822)`,
+              background: `linear-gradient(${i * 36}deg, ${site.primaryColor}, ${site.secondaryColor})`,
               aspectRatio: "3/4",
             }}
           />
@@ -139,8 +139,8 @@ export default function BranchSelector({
 
             {/* Use current location button (visual only for now) */}
             <button
-              className="w-full mb-4 py-2.5 rounded-full border-2 text-sm font-semibold hover:bg-[#FFF0E8] transition-colors flex items-center justify-center gap-2"
-              style={{ borderColor: site.primaryColor, color: site.primaryColor }}
+              className="w-full mb-4 py-2.5 rounded-full border-2 text-sm font-semibold transition-colors flex items-center justify-center gap-2"
+              style={{ borderColor: site.primaryColor, color: site.primaryColor, background: `${site.secondaryColor}55` }}
               onClick={() => alert("Geolocation feature coming soon!")}
             >
               📍 Use Current Location
@@ -153,7 +153,9 @@ export default function BranchSelector({
             <select
               value={city}
               onChange={(e) => setCity(e.target.value)}
-              className="w-full mb-4 px-4 py-3 border border-[#E8DFD0] rounded-xl text-sm bg-white focus:outline-none focus:border-[#E8542F]"
+              onFocus={(e) => (e.currentTarget.style.borderColor = site.primaryColor)}
+              onBlur={(e) => (e.currentTarget.style.borderColor = "#E8DFD0")}
+              className="w-full mb-4 px-4 py-3 border border-[#E8DFD0] rounded-xl text-sm bg-white focus:outline-none"
             >
               {availableCities.map((c) => (
                 <option key={c} value={c}>{c}</option>
@@ -167,7 +169,9 @@ export default function BranchSelector({
             <select
               value={selectedBranchId}
               onChange={(e) => setSelectedBranchId(Number(e.target.value))}
-              className="w-full mb-6 px-4 py-3 border border-[#E8DFD0] rounded-xl text-sm bg-white focus:outline-none focus:border-[#E8542F]"
+              onFocus={(e) => (e.currentTarget.style.borderColor = site.primaryColor)}
+              onBlur={(e) => (e.currentTarget.style.borderColor = "#E8DFD0")}
+              className="w-full mb-6 px-4 py-3 border border-[#E8DFD0] rounded-xl text-sm bg-white focus:outline-none"
             >
               <option value="">
                 {loading ? "Loading branches..." : "Select branch"}
@@ -205,6 +209,22 @@ export default function BranchSelector({
         <p className="mt-6 text-xs text-[#6B6259]/70">
           Powered by <span className="font-semibold">{site.brandName}</span> · Fresh &amp; hot delivery
         </p>
+
+        {/* Legal / info links */}
+        <div className="mt-3 flex items-center gap-x-3 gap-y-1 flex-wrap justify-center text-[11px] text-[#6B6259]/80">
+          <a href="/about" className="hover:underline">About</a>
+          <span>·</span>
+          <a href="/contact" className="hover:underline">Contact</a>
+          <span>·</span>
+          <a href="/faq" className="hover:underline">FAQs</a>
+          <span>·</span>
+          <a href="/terms" className="hover:underline">Terms</a>
+          <span>·</span>
+          <a href="/privacy-policy" className="hover:underline">Privacy</a>
+          <span>·</span>
+          <a href="/refund-policy" className="hover:underline">Refunds</a>
+        </div>
+        <p className="mt-2 text-[11px] text-[#6B6259]/60">© {new Date().getFullYear()} {site.brandName}. All rights reserved.</p>
       </div>
     </div>
   );

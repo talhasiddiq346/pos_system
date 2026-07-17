@@ -29,16 +29,35 @@ export type ProductVariant = {
   is_available: boolean;
 };
 
+export type AddonOption = {
+  id: number;
+  group_id: number;
+  name: string;
+  price: string;
+  is_available: boolean;
+};
+
+export type AddonGroup = {
+  id: number;
+  product_id: number;
+  title: string;
+  selection_type: "single" | "multiple";
+  required: boolean;
+  options: AddonOption[];
+};
+
 export type Product = {
   id: number;
   branch_id: number;
   name: string;
   price: string;
+  discounted_price: string | null;
   category: string | null;
   image_url: string | null;
   is_available: boolean;
   is_popular: boolean;
   variants: ProductVariant[];
+  addon_groups: AddonGroup[];
 };
 
 export type OrderItem = {
@@ -51,6 +70,7 @@ export type OrderItem = {
   unit_price: string;
   quantity: number;
   line_total: string;
+  selected_addons?: { name: string; price: number }[];
 };
 
 export type RiderStatus = "available" | "busy" | "out_for_delivery" | "offline";
@@ -80,10 +100,17 @@ export type Order = {
   id: number;
   branch_id: number;
   source: string;
-  order_type: "takeaway" | "delivery";
+  order_type: "takeaway" | "delivery" | "dine_in";
   status: string;
   subtotal: string;
   total: string;
+  tax_amount: string;
+  discount_amount: string;
+  voucher_code: string | null;
+  table_number: string | null;
+  restaurant_table_id: number | null;
+  restaurant_table_name: string | null;
+  order_code: string | null;
   payment_method: string;
   customer_name: string | null;
   customer_phone: string | null;

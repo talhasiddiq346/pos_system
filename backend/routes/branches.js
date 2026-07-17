@@ -148,6 +148,28 @@ router.patch("/:id/admin", requireAuth, requireRole("super_admin"), async (req, 
     client.release();
   }
 });
+router.patch(
+  "/:id/status",
+  requireAuth,
+  requireRole("super_admin", "branch_admin", "cashier"),
+  async (req, res) => {
+    const { id } = req.params;
+    const { is_open } = req.body;
+
+    if (req.user.role !== "super_admin" && req.user.branch_id !== Number(id)) {
+      return res.status(403).json({ error: "You can only manage your own branch" });
+    }
+    if (typeof is_open !== "boolean") return res.status(400).json({ error: "is_open must be a boolean" });
+
+    const result = await pool.query(
+      "UPDATE branches SET is_open = $1 WHERE id = $2 RETURNING *",
+      [is_open, id]
+    );
+    if (result.rows.length === 0) return res.status(404).json({ error: "Branch not found" });
+    res.json(result.rows[0]);
+  }
+);
+
 router.get("/me", requireAuth, async (req, res) => {
   if (!req.user.branch_id) return res.status(404).json({ error: "No branch assigned" });
   const result = await pool.query("SELECT * FROM branches WHERE id = $1", [req.user.branch_id]);

@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import axios from "axios";
 import { useSiteSettings } from "@/lib/useSiteSettings";
 import SiteHeader from "./SiteHeader";
+import Footer from "./Footer";
 const API = (process.env.NEXT_PUBLIC_API_URL ?? "").replace(/\/api\/?$/, "") + "/api";
 
 type OrderStatus = "pending" | "preparing" | "ready" | "dispatched" | "delivered" | "completed" | "cancelled";
@@ -118,13 +119,16 @@ export default function OrderTracker({
               value={inputCode}
               onChange={(e) => setInputCode(e.target.value.toUpperCase())}
               onKeyDown={(e) => e.key === "Enter" && fetchOrder(inputCode)}
+              onFocus={(e) => (e.currentTarget.style.borderColor = site.primaryColor)}
+              onBlur={(e) => (e.currentTarget.style.borderColor = "#E8DFD0")}
               placeholder="e.g. ORD-A7B3C9"
-              className="flex-1 h-12 border-2 border-[#E8DFD0] rounded-xl px-4 text-base font-mono focus:outline-none focus:border-[#E8542F] uppercase"
+              className="flex-1 h-12 border-2 border-[#E8DFD0] rounded-xl px-4 text-base font-mono focus:outline-none uppercase"
             />
             <button
               onClick={() => fetchOrder(inputCode)}
               disabled={!inputCode.trim() || loading}
-              className="px-5 h-12 rounded-xl bg-[#E8542F] text-white font-semibold hover:bg-[#D64822] disabled:opacity-50 flex items-center gap-2"
+              className="px-5 h-12 rounded-xl text-white font-semibold disabled:opacity-50 flex items-center gap-2"
+              style={{ background: site.primaryColor }}
             >
               {loading ? "..." : <><span>🔍</span> Track</>}
             </button>
@@ -140,7 +144,7 @@ export default function OrderTracker({
         {order && (
           <>
             {/* Status hero */}
-            <div className="mt-6 bg-gradient-to-br from-[#E8542F] to-[#D64822] rounded-3xl p-6 text-white shadow-lg">
+            <div className="mt-6 rounded-3xl p-6 text-white shadow-lg" style={{ background: `linear-gradient(to bottom right, ${site.primaryColor}, ${site.primaryColor}CC)` }}>
               <div className="flex items-start justify-between mb-4 gap-3">
                 <div className="min-w-0">
                   <p className="text-xs opacity-80 uppercase tracking-wider">Order</p>
@@ -206,9 +210,10 @@ export default function OrderTracker({
                               isDone
                                 ? "bg-[#16A34A] text-white"
                                 : isCurrent
-                                ? "bg-[#E8542F] text-white ring-4 ring-[#E8542F]/20 scale-110"
+                                ? "text-white scale-110"
                                 : "bg-[#F5F1EB] text-[#A89F94]"
                             }`}
+                            style={isCurrent ? { background: site.primaryColor, boxShadow: `0 0 0 4px ${site.primaryColor}33` } : undefined}
                           >
                             {isDone ? "✓" : step.icon}
                           </div>
@@ -264,7 +269,7 @@ export default function OrderTracker({
                 {order.branch_phone && (
                   <div className="flex items-start gap-2">
                     <span className="text-[#6B6259] min-w-[80px]">Phone:</span>
-                    <a href={`tel:${order.branch_phone}`} className="text-[#E8542F] font-semibold">
+                    <a href={`tel:${order.branch_phone}`} className="font-semibold" style={{ color: site.primaryColor }}>
                       {order.branch_phone}
                     </a>
                   </div>
@@ -282,9 +287,12 @@ export default function OrderTracker({
                   <div key={i} className="px-5 py-3 flex items-center justify-between gap-3">
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold text-[#1A1613]">
-                        <span className="text-[#E8542F]">{item.qty}x</span> {item.name}
+                        <span style={{ color: site.primaryColor }}>{item.qty}x</span> {item.name}
                         {item.variant && (
-                          <span className="ml-1.5 text-xs bg-[#FFE8E0] text-[#E8542F] px-1.5 py-0.5 rounded">
+                          <span
+                            className="ml-1.5 text-xs px-1.5 py-0.5 rounded"
+                            style={{ background: site.secondaryColor, color: site.primaryColor }}
+                          >
                             {item.variant}
                           </span>
                         )}
@@ -296,9 +304,9 @@ export default function OrderTracker({
                   </div>
                 ))}
               </div>
-              <div className="px-5 py-4 bg-[#FFF5F1] border-t border-[#FFD5C7] flex items-center justify-between">
+              <div className="px-5 py-4 border-t flex items-center justify-between" style={{ background: `${site.secondaryColor}55`, borderColor: `${site.primaryColor}33` }}>
                 <span className="font-bold text-[#1A1613]">Total</span>
-                <span className="font-bold text-[#E8542F] text-xl">Rs. {fmt(order.total)}</span>
+                <span className="font-bold text-xl" style={{ color: site.primaryColor }}>Rs. {fmt(order.total)}</span>
               </div>
             </div>
 
@@ -313,6 +321,8 @@ export default function OrderTracker({
           </>
         )}
       </div>
+
+      <Footer />
     </div>
   );
 }

@@ -26,7 +26,14 @@ router.get("/", async (req, res) => {
 });
 
 router.put("/", requireAuth, requireRole("super_admin"), async (req, res) => {
-  const { brand_name, primary_color, secondary_color, background_color } = req.body;
+  const { brand_name, primary_color, secondary_color, background_color, tax_rate, delivery_fee } = req.body;
+
+  if (tax_rate !== undefined && tax_rate !== null && Number(tax_rate) < 0) {
+    return res.status(400).json({ error: "Tax rate cannot be negative" });
+  }
+  if (delivery_fee !== undefined && delivery_fee !== null && Number(delivery_fee) < 0) {
+    return res.status(400).json({ error: "Delivery fee cannot be negative" });
+  }
 
   const result = await pool.query(
     `UPDATE site_settings SET
@@ -34,9 +41,15 @@ router.put("/", requireAuth, requireRole("super_admin"), async (req, res) => {
        primary_color = COALESCE($2, primary_color),
        secondary_color = COALESCE($3, secondary_color),
        background_color = COALESCE($4, background_color),
+       tax_rate = COALESCE($5, tax_rate),
+       delivery_fee = COALESCE($6, delivery_fee),
        updated_at = now()
      WHERE id = 1 RETURNING *`,
-    [brand_name?.trim() || null, primary_color || null, secondary_color || null, background_color || null]
+    [
+      brand_name?.trim() || null, primary_color || null, secondary_color || null, background_color || null,
+      tax_rate !== undefined && tax_rate !== null ? Number(tax_rate) : null,
+      delivery_fee !== undefined && delivery_fee !== null ? Number(delivery_fee) : null,
+    ]
   );
   res.json(result.rows[0]);
 });

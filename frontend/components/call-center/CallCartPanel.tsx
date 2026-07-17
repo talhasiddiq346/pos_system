@@ -35,6 +35,9 @@ export default function CallCartPanel({
                 <div>
                   <p className="text-sm text-[#1B1D1E]">{c.product_name}</p>
                   {c.variant_name && <p className="text-xs text-[#494D46]">{c.variant_name}</p>}
+                  {c.addon_summary && c.addon_summary.length > 0 && (
+                    <p className="text-[11px] text-[#6B7068]">+ {c.addon_summary.map((a) => a.name).join(", ")}</p>
+                  )}
                 </div>
                 <button onClick={() => onRemove(c.key)} className="text-xs text-[#9E3527]">×</button>
               </div>

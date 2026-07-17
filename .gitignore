@@ -54,3 +54,6 @@ backend/hash.js
 *.sql
 *.sql.bak
 tandoor-dump*
+
+# ...but real migration files should always be tracked
+!backend/migrations/*.sql

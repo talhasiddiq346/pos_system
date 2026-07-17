@@ -10,6 +10,7 @@ import PasswordsPanel from "./PasswordsPanel";
 import type { User } from "@/lib/types";
 import ProductsPanel from "./products/ProductsPanel";
 import POSScreen from "./pos/POSScreen";
+import DineInScreen from "./pos/DineInScreen";
 import OrdersHistoryPanel from "./orders/OrdersHistoryPanel";
 import CallCenterScreen from "./call-center/CallCenterScreen";
 import ChefScreen from "./chef/ChefScreen";
@@ -81,6 +82,8 @@ export default function Dashboard({ user }: { user: User }) {
         return <ProductsPanel user={user} />;
       case "pos":
         return <POSScreen user={user} />;
+      case "dine-in":
+        return <DineInScreen user={user} />;
       case "receipts":
         return <OrdersHistoryPanel viewerRole={user.role} user={user} />;
       case "orders":

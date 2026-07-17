@@ -13,6 +13,8 @@ type SiteSettings = {
   primary_color: string;
   secondary_color: string;
   background_color: string;
+  tax_rate: string;
+  delivery_fee: string;
 };
 
 function errMsg(err: unknown) {
@@ -27,9 +29,11 @@ export default function BrandingPanel() {
   const [success, setSuccess] = useState("");
 
   const [brandName, setBrandName] = useState("");
-  const [primaryColor, setPrimaryColor] = useState("#E8542F");
-  const [secondaryColor, setSecondaryColor] = useState("#F0A93B");
-  const [backgroundColor, setBackgroundColor] = useState("#F4EBD9");
+  const [primaryColor, setPrimaryColor] = useState("#2563EB");
+  const [secondaryColor, setSecondaryColor] = useState("#DBEAFE");
+  const [backgroundColor, setBackgroundColor] = useState("#F3F4F6");
+  const [taxRate, setTaxRate] = useState("0");
+  const [deliveryFee, setDeliveryFee] = useState("0");
   const [saving, setSaving] = useState(false);
 
   const [logoFile, setLogoFile] = useState<File | null>(null);
@@ -47,6 +51,8 @@ export default function BrandingPanel() {
     setPrimaryColor(res.data.primary_color);
     setSecondaryColor(res.data.secondary_color);
     setBackgroundColor(res.data.background_color);
+    setTaxRate(res.data.tax_rate ?? "0");
+    setDeliveryFee(res.data.delivery_fee ?? "0");
     setLoading(false);
   }
 
@@ -64,6 +70,8 @@ export default function BrandingPanel() {
         primary_color: primaryColor,
         secondary_color: secondaryColor,
         background_color: backgroundColor,
+        tax_rate: Number(taxRate),
+        delivery_fee: Number(deliveryFee),
       });
       setSuccess("✅ Branding saved");
       await load();
@@ -199,6 +207,35 @@ export default function BrandingPanel() {
                 </div>
               </div>
             ))}
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="text-xs font-medium text-[#6B7068] uppercase tracking-wide block mb-1.5">
+                Tax rate (%)
+              </label>
+              <input
+                type="number" min="0" step="0.01"
+                value={taxRate}
+                onChange={(e) => setTaxRate(e.target.value)}
+                className="border border-[#E3E5E0] rounded-md px-2.5 py-1.5 text-sm w-28"
+              />
+              <p className="text-xs text-[#6B7068] mt-1">
+                Applied to POS and online orders. Set manually for now — no FBR API integration yet.
+              </p>
+            </div>
+            <div>
+              <label className="text-xs font-medium text-[#6B7068] uppercase tracking-wide block mb-1.5">
+                Delivery fee (Rs.)
+              </label>
+              <input
+                type="number" min="0" step="0.01"
+                value={deliveryFee}
+                onChange={(e) => setDeliveryFee(e.target.value)}
+                className="border border-[#E3E5E0] rounded-md px-2.5 py-1.5 text-sm w-28"
+              />
+              <p className="text-xs text-[#6B7068] mt-1">Flat fee added to delivery orders on the website.</p>
+            </div>
           </div>
 
           <button

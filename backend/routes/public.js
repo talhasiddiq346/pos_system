@@ -1,6 +1,8 @@
 import { Router } from "express";
 import { pool } from "../db.js";
 import { validateVoucher } from "./settings.js";
+import { getAddonGroupsByProduct } from "./products.js";
+import { sendOrderConfirmationEmail } from "../lib/email.js";
 
 const router = Router();
 
@@ -54,9 +56,20 @@ router.get("/menu/:branchId", async (req, res) => {
     variantsByProduct[v.product_id].push(v);
   }
 
+  const addonGroupsByProduct = await getAddonGroupsByProduct(ids);
+  // Only surface available options to customers.
+  const publicAddonGroups = {};
+  for (const [pid, groups] of Object.entries(addonGroupsByProduct)) {
+    publicAddonGroups[pid] = groups.map((g) => ({
+      ...g,
+      options: g.options.filter((o) => o.is_available),
+    }));
+  }
+
   res.json(productsRes.rows.map((p) => ({
     ...p,
     variants: variantsByProduct[p.id] || [],
+    addon_groups: publicAddonGroups[p.id] || [],
   })));
 });
 
@@ -74,7 +87,7 @@ router.get("/categories/:branchId", async (req, res) => {
 router.post("/order", async (req, res) => {
   const {
     branch_id, items, customer_name, customer_phone,
-    customer_address, payment_method, order_type, voucher_code,
+    customer_address, customer_email, payment_method, order_type, voucher_code,
   } = req.body;
 
   if (!branch_id) return res.status(400).json({ error: "Branch is required" });
@@ -108,7 +121,7 @@ router.post("/order", async (req, res) => {
     const resolvedItems = [];
 
     for (const item of items) {
-      const { product_id, variant_id, quantity } = item;
+      const { product_id, variant_id, quantity, addon_option_ids } = item;
       if (!product_id || !quantity || quantity < 1)
         throw { status: 400, message: "Invalid item" };
 
@@ -120,7 +133,7 @@ router.post("/order", async (req, res) => {
         throw { status: 404, message: "Product not found" };
       const product = productRes.rows[0];
 
-      let unitPrice = Number(product.price);
+      let unitPrice = Number(product.discounted_price ?? product.price);
       let variantName = null;
       let resolvedVariantId = null;
 
@@ -137,12 +150,30 @@ router.post("/order", async (req, res) => {
         resolvedVariantId = variant.id;
       }
 
+      // Add-ons: re-validate each chosen option against THIS product's own groups,
+      // and re-price from the DB — never trust a client-sent price.
+      let selectedAddons = [];
+      if (Array.isArray(addon_option_ids) && addon_option_ids.length > 0) {
+        const optionsRes = await client.query(
+          `SELECT ao.* FROM addon_options ao
+           JOIN addon_groups ag ON ag.id = ao.group_id
+           WHERE ao.id = ANY($1::int[]) AND ag.product_id = $2 AND ao.is_available = true`,
+          [addon_option_ids, product_id]
+        );
+        if (optionsRes.rows.length !== addon_option_ids.length)
+          throw { status: 400, message: "One or more selected add-ons are invalid" };
+
+        selectedAddons = optionsRes.rows.map((o) => ({ name: o.name, price: Number(o.price) }));
+        unitPrice += selectedAddons.reduce((s, a) => s + a.price, 0);
+      }
+
       const lineTotal = unitPrice * quantity;
       subtotal += lineTotal;
       resolvedItems.push({
         product_id, product_name: product.name,
         variant_id: resolvedVariantId, variant_name: variantName,
         unit_price: unitPrice, quantity, line_total: lineTotal,
+        selected_addons: selectedAddons,
       });
     }
 
@@ -156,21 +187,28 @@ router.post("/order", async (req, res) => {
       discountAmount = discount;
       appliedVoucherCode = voucher.code;
     }
-    const total = subtotal - discountAmount;
+
+    // ── Tax + delivery fee: admin-configured (site_settings), applied server-side.
+    const settingsRes = await client.query("SELECT tax_rate, delivery_fee, brand_name FROM site_settings WHERE id = 1");
+    const taxRate = Number(settingsRes.rows[0]?.tax_rate || 0);
+    const deliveryFee = dbOrderType === "delivery" ? Number(settingsRes.rows[0]?.delivery_fee || 0) : 0;
+    const afterDiscount = subtotal - discountAmount;
+    const taxAmount = Math.round(afterDiscount * (taxRate / 100) * 100) / 100;
+    const total = afterDiscount + taxAmount + deliveryFee;
 
     const orderCode = generateOrderCode();
     const orderRes = await client.query(
       `INSERT INTO orders
          (branch_id, source, order_type, status, subtotal, total,
-          payment_method, customer_name, customer_phone, customer_address, order_code,
-          voucher_code, discount_amount)
-       VALUES ($1, 'online', $2, 'pending', $3, $4, $5, $6, $7, $8, $9, $10, $11)
+          payment_method, customer_name, customer_phone, customer_address, customer_email, order_code,
+          voucher_code, discount_amount, tax_amount, delivery_fee)
+       VALUES ($1, 'online', $2, 'pending', $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
        RETURNING *`,
       [
         branch_id, dbOrderType, subtotal, total,
         toDbPaymentMethod(payment_method),
-        customer_name, customer_phone, customer_address || null, orderCode,
-        appliedVoucherCode, discountAmount,
+        customer_name, customer_phone, customer_address || null, customer_email || null, orderCode,
+        appliedVoucherCode, discountAmount, taxAmount, deliveryFee,
       ]
     );
     const order = orderRes.rows[0];
@@ -183,18 +221,32 @@ router.post("/order", async (req, res) => {
       await client.query(
         `INSERT INTO order_items
            (order_id, product_id, product_name, variant_id, variant_name,
-            unit_price, quantity, line_total)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+            unit_price, quantity, line_total, selected_addons)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
         [order.id, it.product_id, it.product_name, it.variant_id,
-         it.variant_name, it.unit_price, it.quantity, it.line_total]
+         it.variant_name, it.unit_price, it.quantity, it.line_total,
+         JSON.stringify(it.selected_addons)]
       );
     }
 
     await client.query("COMMIT");
+
+    if (customer_email) {
+      sendOrderConfirmationEmail({
+        to: customer_email,
+        brandName: settingsRes.rows[0]?.brand_name || "Tandoor",
+        orderCode: order.order_code,
+        total: order.total,
+        items: resolvedItems,
+      }).catch(() => {}); // never let an email failure affect the order response
+    }
+
     res.status(201).json({
       order_code: order.order_code,
       total: order.total,
       discount_amount: order.discount_amount,
+      tax_amount: order.tax_amount,
+      delivery_fee: order.delivery_fee,
       status: order.status,
     });
   } catch (err) {
@@ -212,7 +264,7 @@ router.get("/track/:orderCode", async (req, res) => {
   const result = await pool.query(
     `SELECT o.id, o.order_code, o.status, o.order_type, o.payment_method,
             o.customer_name, o.customer_phone, o.customer_address,
-            o.total, o.discount_amount, o.created_at,
+            o.total, o.subtotal, o.discount_amount, o.tax_amount, o.delivery_fee, o.created_at,
             b.name AS branch_name, b.address AS branch_address, b.phone AS branch_phone,
             CASE WHEN o.status IN ('dispatched','delivered')
               THEN u.name ELSE NULL END AS rider_name,
@@ -233,7 +285,7 @@ router.get("/track/:orderCode", async (req, res) => {
   const order = result.rows[0];
 
   const itemsRes = await pool.query(
-    `SELECT product_name AS name, variant_name AS variant, quantity AS qty, unit_price AS price
+    `SELECT product_name AS name, variant_name AS variant, quantity AS qty, unit_price AS price, selected_addons
      FROM order_items WHERE order_id = $1 ORDER BY id`,
     [order.id]
   );

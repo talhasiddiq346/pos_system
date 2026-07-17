@@ -15,6 +15,8 @@ type CartItem = {
   unit_price: number;
   quantity: number;
   image_url?: string | null;
+  addon_option_ids?: number[];
+  addon_summary?: { name: string; price: number }[];
 };
 
 type PaymentMethod = "cod" | "online";
@@ -61,7 +63,10 @@ export default function WebsiteCheckout({
 
   const fmt = (n: number) => Math.round(n).toLocaleString();
   const subtotal = cart.reduce((s, c) => s + c.unit_price * c.quantity, 0);
-  const total = subtotal - discountAmt;
+  const deliveryFee = orderType === "delivery" ? site.deliveryFee : 0;
+  const afterDiscount = Math.max(subtotal - discountAmt, 0);
+  const taxAmt = Math.round(afterDiscount * (site.taxRate / 100) * 100) / 100;
+  const total = afterDiscount + taxAmt + deliveryFee;
 
   function handlePhoneChange(val: string, setter: (v: string) => void, errSetter?: (e: string) => void) {
     setter(val);
@@ -133,6 +138,7 @@ export default function WebsiteCheckout({
           variant_name: c.variant_name,
           unit_price: c.unit_price,
           quantity: c.quantity,
+          addon_option_ids: c.addon_option_ids || [],
         })),
       };
 
@@ -153,6 +159,8 @@ export default function WebsiteCheckout({
       style={{
         fontFamily: "'DM Sans','Inter',-apple-system,sans-serif",
         background: site.backgroundColor,
+        ["--wp" as string]: site.primaryColor,
+        ["--ws" as string]: site.secondaryColor,
       }}
     >
       <SiteHeader
@@ -197,7 +205,7 @@ export default function WebsiteCheckout({
                   href={`https://maps.google.com/?q=${encodeURIComponent(branch.address)}`}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex items-center gap-1 mt-2 text-sm text-[#E8542F] font-semibold hover:underline"
+                  className="inline-flex items-center gap-1 mt-2 text-sm text-[var(--wp)] font-semibold hover:underline"
                 >
                   View Location 📍
                 </a>
@@ -216,13 +224,13 @@ export default function WebsiteCheckout({
           {/* Info form card */}
           <div className="bg-white rounded-2xl border border-[#E8DFD0] overflow-hidden">
             <div className="bg-[#FFF5F1] px-5 py-4 flex items-center gap-3 border-b border-[#FFD5C7]">
-              <div className="w-10 h-10 rounded-full bg-[#E8542F] flex items-center justify-center shrink-0">
+              <div className="w-10 h-10 rounded-full bg-[var(--wp)] flex items-center justify-center shrink-0">
                 <span className="text-lg">📝</span>
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-[#1A1613] flex items-center gap-2 flex-wrap">
                   This is a{" "}
-                  <span className="bg-[#E8542F] text-white text-xs font-bold px-2 py-0.5 rounded">
+                  <span className="bg-[var(--wp)] text-white text-xs font-bold px-2 py-0.5 rounded">
                     {isPickup ? "Pickup Order" : "Delivery Order"}
                   </span>
                 </p>
@@ -246,7 +254,7 @@ export default function WebsiteCheckout({
                   <select
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
-                    className="w-full h-11 border border-[#E8DFD0] rounded-xl px-3 text-sm bg-white focus:outline-none focus:border-[#E8542F]"
+                    className="w-full h-11 border border-[#E8DFD0] rounded-xl px-3 text-sm bg-white focus:outline-none focus:border-[var(--wp)]"
                   >
                     <option>Mr.</option>
                     <option>Mrs.</option>
@@ -256,7 +264,7 @@ export default function WebsiteCheckout({
                 <div className="col-span-2">
                   <div className="flex items-center justify-between mb-1.5">
                     <label className="text-xs font-semibold text-[#1A1613]">Full Name</label>
-                    <span className="text-[10px] font-semibold text-[#E8542F] bg-[#FFE8E0] px-2 py-0.5 rounded">
+                    <span className="text-[10px] font-semibold text-[var(--wp)] bg-[var(--ws)] px-2 py-0.5 rounded">
                       *Required
                     </span>
                   </div>
@@ -264,7 +272,7 @@ export default function WebsiteCheckout({
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder="Full Name"
-                    className="w-full h-11 border border-[#E8DFD0] rounded-xl px-3 text-sm bg-white focus:outline-none focus:border-[#E8542F]"
+                    className="w-full h-11 border border-[#E8DFD0] rounded-xl px-3 text-sm bg-white focus:outline-none focus:border-[var(--wp)]"
                     required
                   />
                 </div>
@@ -275,7 +283,7 @@ export default function WebsiteCheckout({
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
                     <label className="text-xs font-semibold text-[#1A1613]">Mobile Number</label>
-                    <span className="text-[10px] font-semibold text-[#E8542F] bg-[#FFE8E0] px-2 py-0.5 rounded">
+                    <span className="text-[10px] font-semibold text-[var(--wp)] bg-[var(--ws)] px-2 py-0.5 rounded">
                       *Required
                     </span>
                   </div>
@@ -286,7 +294,7 @@ export default function WebsiteCheckout({
                     onChange={(e) => handlePhoneChange(e.target.value, setPhone, setPhoneError)}
                     placeholder="03xx-xxxxxxx"
                     className={`w-full h-11 border rounded-xl px-3 text-sm bg-white focus:outline-none ${
-                      phoneError ? "border-[#F0C9C2] focus:border-[#9E3527]" : "border-[#E8DFD0] focus:border-[#E8542F]"
+                      phoneError ? "border-[#F0C9C2] focus:border-[#9E3527]" : "border-[#E8DFD0] focus:border-[var(--wp)]"
                     }`}
                     required
                   />
@@ -302,7 +310,7 @@ export default function WebsiteCheckout({
                     value={altPhone}
                     onChange={(e) => setAltPhone(e.target.value)}
                     placeholder="03xx-xxxxxxx"
-                    className="w-full h-11 border border-[#E8DFD0] rounded-xl px-3 text-sm bg-white focus:outline-none focus:border-[#E8542F]"
+                    className="w-full h-11 border border-[#E8DFD0] rounded-xl px-3 text-sm bg-white focus:outline-none focus:border-[var(--wp)]"
                   />
                 </div>
               </div>
@@ -312,7 +320,7 @@ export default function WebsiteCheckout({
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
                     <label className="text-xs font-semibold text-[#1A1613]">Delivery Address</label>
-                    <span className="text-[10px] font-semibold text-[#E8542F] bg-[#FFE8E0] px-2 py-0.5 rounded">
+                    <span className="text-[10px] font-semibold text-[var(--wp)] bg-[var(--ws)] px-2 py-0.5 rounded">
                       *Required
                     </span>
                   </div>
@@ -321,7 +329,7 @@ export default function WebsiteCheckout({
                     onChange={(e) => setAddress(e.target.value)}
                     placeholder="House / Street / Area / Landmark"
                     rows={2}
-                    className="w-full border border-[#E8DFD0] rounded-xl px-3 py-2.5 text-sm bg-white focus:outline-none focus:border-[#E8542F] resize-none"
+                    className="w-full border border-[#E8DFD0] rounded-xl px-3 py-2.5 text-sm bg-white focus:outline-none focus:border-[var(--wp)] resize-none"
                   />
                 </div>
               )}
@@ -335,19 +343,21 @@ export default function WebsiteCheckout({
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   placeholder="Any special instructions?"
-                  className="w-full h-11 border border-[#E8DFD0] rounded-xl px-3 text-sm bg-white focus:outline-none focus:border-[#E8542F]"
+                  className="w-full h-11 border border-[#E8DFD0] rounded-xl px-3 text-sm bg-white focus:outline-none focus:border-[var(--wp)]"
                 />
               </div>
 
               {/* Email */}
               <div>
-                <label className="text-xs font-semibold text-[#1A1613] block mb-1.5">Email Address</label>
+                <label className="text-xs font-semibold text-[#1A1613] block mb-1.5">
+                  Email Address <span className="font-normal text-[#6B6259]">(optional)</span>
+                </label>
                 <input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="Enter your email"
-                  className="w-full h-11 border border-[#E8DFD0] rounded-xl px-3 text-sm bg-white focus:outline-none focus:border-[#E8542F]"
+                  placeholder="Get your order confirmation by email"
+                  className="w-full h-11 border border-[#E8DFD0] rounded-xl px-3 text-sm bg-white focus:outline-none focus:border-[var(--wp)]"
                 />
               </div>
             </div>
@@ -361,12 +371,12 @@ export default function WebsiteCheckout({
                   onClick={() => setPayment("cod")}
                   className={`relative p-4 rounded-xl border-2 transition-all ${
                     payment === "cod"
-                      ? "border-[#E8542F] bg-[#FFF5F1]"
-                      : "border-[#E8DFD0] hover:border-[#F0A93B]"
+                      ? "border-[var(--wp)] bg-[#FFF5F1]"
+                      : "border-[#E8DFD0] hover:border-[var(--ws)]"
                   }`}
                 >
                   {payment === "cod" && (
-                    <span className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-[#E8542F] text-white flex items-center justify-center text-xs">
+                    <span className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-[var(--wp)] text-white flex items-center justify-center text-xs">
                       ✓
                     </span>
                   )}
@@ -380,12 +390,12 @@ export default function WebsiteCheckout({
                   onClick={() => setPayment("online")}
                   className={`relative p-4 rounded-xl border-2 transition-all ${
                     payment === "online"
-                      ? "border-[#E8542F] bg-[#FFF5F1]"
-                      : "border-[#E8DFD0] hover:border-[#F0A93B]"
+                      ? "border-[var(--wp)] bg-[#FFF5F1]"
+                      : "border-[#E8DFD0] hover:border-[var(--ws)]"
                   }`}
                 >
                   {payment === "online" && (
-                    <span className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-[#E8542F] text-white flex items-center justify-center text-xs">
+                    <span className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-[var(--wp)] text-white flex items-center justify-center text-xs">
                       ✓
                     </span>
                   )}
@@ -424,12 +434,17 @@ export default function WebsiteCheckout({
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-bold text-[#1A1613] truncate">
-                      <span className="text-[#E8542F]">{item.quantity}x</span> {item.product_name}
+                      <span className="text-[var(--wp)]">{item.quantity}x</span> {item.product_name}
                     </p>
                     {item.variant_name && (
-                      <span className="inline-block text-[10px] font-semibold px-1.5 py-0.5 rounded bg-[#FFE8E0] text-[#E8542F] mt-0.5">
+                      <span className="inline-block text-[10px] font-semibold px-1.5 py-0.5 rounded bg-[var(--ws)] text-[var(--wp)] mt-0.5 mr-1">
                         {item.variant_name}
                       </span>
+                    )}
+                    {item.addon_summary && item.addon_summary.length > 0 && (
+                      <p className="text-[10px] text-[#6B6259] mt-0.5 truncate">
+                        + {item.addon_summary.map((a) => a.name).join(", ")}
+                      </p>
                     )}
                   </div>
                   <p className="text-sm font-bold text-[#1E293B]">
@@ -456,10 +471,26 @@ export default function WebsiteCheckout({
                 <span className="font-bold text-[#16A34A]">− Rs. {fmt(discountAmt)}</span>
               </div>
             )}
+            {deliveryFee > 0 && (
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2 text-sm text-[#1A1613]">
+                  <span>🛵</span> Delivery Fee
+                </div>
+                <span className="font-bold text-[#1A1613]">Rs. {fmt(deliveryFee)}</span>
+              </div>
+            )}
+            {taxAmt > 0 && (
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2 text-sm text-[#1A1613]">
+                  <span>🧾</span> Tax
+                </div>
+                <span className="font-bold text-[#1A1613]">Rs. {fmt(taxAmt)}</span>
+              </div>
+            )}
             <div className="h-px bg-[#FFD5C7] my-3" />
             <div className="flex items-center justify-between">
               <span className="font-bold text-[#1A1613] text-base">Grand Total</span>
-              <span className="font-bold text-[#E8542F] text-xl">Rs. {fmt(total)}</span>
+              <span className="font-bold text-[var(--wp)] text-xl">Rs. {fmt(total)}</span>
             </div>
           </div>
 
@@ -481,12 +512,12 @@ export default function WebsiteCheckout({
                     value={voucher}
                     onChange={(e) => setVoucher(e.target.value.toUpperCase())}
                     placeholder="Enter Voucher / Promo code"
-                    className="flex-1 h-11 border border-[#E8DFD0] rounded-xl px-3 text-sm bg-white focus:outline-none focus:border-[#E8542F]"
+                    className="flex-1 h-11 border border-[#E8DFD0] rounded-xl px-3 text-sm bg-white focus:outline-none focus:border-[var(--wp)]"
                   />
                   <button
                     onClick={applyVoucher}
                     disabled={!voucher.trim() || applyingVoucher}
-                    className="px-5 h-11 rounded-xl bg-[#E8542F] text-white text-sm font-semibold hover:bg-[#D64822] disabled:opacity-50"
+                    className="px-5 h-11 rounded-xl bg-[var(--wp)] text-white text-sm font-semibold hover:bg-[var(--wp)] disabled:opacity-50"
                   >
                     {applyingVoucher ? "Checking..." : "Apply"}
                   </button>
@@ -510,7 +541,7 @@ export default function WebsiteCheckout({
           <button
             onClick={handleSubmit}
             disabled={submitting || !name || !phone || !!phoneError || (!isPickup && !address)}
-            className="w-full py-4 rounded-full bg-gradient-to-r from-[#E8542F] to-[#D64822] text-white font-bold text-base flex items-center justify-center gap-2 shadow-lg active:scale-[0.98] transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full py-4 rounded-full bg-gradient-to-r from-[var(--wp)] to-[var(--wp)] text-white font-bold text-base flex items-center justify-center gap-2 shadow-lg active:scale-[0.98] transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <span>🛒</span>
             {submitting ? "Placing order..." : "Place Order"}
@@ -519,7 +550,7 @@ export default function WebsiteCheckout({
           {/* Continue link */}
           <button
             onClick={onBack}
-            className="w-full text-center text-sm font-semibold text-[#E8542F] hover:underline flex items-center justify-center gap-1.5"
+            className="w-full text-center text-sm font-semibold text-[var(--wp)] hover:underline flex items-center justify-center gap-1.5"
           >
             ← continue to add more items
           </button>

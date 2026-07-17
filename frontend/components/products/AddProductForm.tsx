@@ -27,6 +27,7 @@ export default function AddProductForm({
 }) {
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
+  const [discountedPrice, setDiscountedPrice] = useState("");
   const [category, setCategory] = useState("");
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -59,6 +60,10 @@ export default function AddProductForm({
     }
     if (!category.trim()) {
       setError("Category is required");
+      return;
+    }
+    if (discountedPrice.trim() && Number(discountedPrice) >= Number(price)) {
+      setError("Discounted price must be lower than the actual price");
       return;
     }
 
@@ -95,6 +100,7 @@ export default function AddProductForm({
       const res = await api.post("/products", {
         name,
         price: Number(price),
+        discounted_price: discountedPrice.trim() ? Number(discountedPrice) : null,
         category: category.trim(),
         branch_id: isSuperAdmin ? branchFilter : undefined,
       });
@@ -107,6 +113,7 @@ export default function AddProductForm({
       }
       setName("");
       setPrice("");
+      setDiscountedPrice("");
       setCategory("");
       setImageFile(null);
       const fileInput = document.getElementById("product-image-input") as HTMLInputElement | null;
@@ -183,6 +190,15 @@ export default function AddProductForm({
             onChange={(e) => setPrice(e.target.value)}
             className="border border-[#D0D3CB] rounded-md px-2.5 py-1.5 text-sm w-28"
             required
+          />
+          <input
+            placeholder="Discounted price (optional)"
+            type="number"
+            step="0.01"
+            min="0"
+            value={discountedPrice}
+            onChange={(e) => setDiscountedPrice(e.target.value)}
+            className="border border-[#D0D3CB] rounded-md px-2.5 py-1.5 text-sm w-44"
           />
           <div className="min-w-[220px]">
             <CategorySelect

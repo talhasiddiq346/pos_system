@@ -4,6 +4,7 @@ import { requireAuth, requireRole } from "../middleware/auth.js";
 import { io } from "../server.js";
 import { startRiderTimer } from "../lib/riderTimers.js";
 import { validate, createOrderSchema } from "../lib/validate.js";
+import { validateVoucher } from "./settings.js";
 
 const router = Router();
 
@@ -161,9 +162,10 @@ router.get("/", requireAuth, requireRole(...ALL_ROLES), async (req, res) => {
       : req.user.branch_id;
 
   const query = `
-    SELECT o.*, u.name AS created_by_name
+    SELECT o.*, u.name AS created_by_name, rt.name AS restaurant_table_name
     FROM orders o
     LEFT JOIN users u ON u.id = o.created_by
+    LEFT JOIN restaurant_tables rt ON rt.id = o.restaurant_table_id
     ${branchId ? "WHERE o.branch_id = $1" : ""}
     ORDER BY o.created_at DESC LIMIT 100
   `;
@@ -179,9 +181,10 @@ router.get("/:id", requireAuth, requireRole(...ALL_ROLES), async (req, res) => {
   const { id } = req.params;
 
   const orderResult = await pool.query(
-    `SELECT o.*, u.name AS created_by_name
+    `SELECT o.*, u.name AS created_by_name, rt.name AS restaurant_table_name
      FROM orders o
      LEFT JOIN users u ON u.id = o.created_by
+     LEFT JOIN restaurant_tables rt ON rt.id = o.restaurant_table_id
      WHERE o.id = $1`,
     [id]
   );
@@ -219,7 +222,7 @@ router.post(
   async (req, res) => {
     const validated = validate(createOrderSchema, req.body);
     const { items, customer_name, customer_phone, customer_address,
-      payment_method, branch_id, source, order_type } = validated;
+      payment_method, branch_id, source, order_type, table_number, voucher_code } = validated;
 
     if (!Array.isArray(items) || items.length === 0)
       return res.status(400).json({ error: "Cart is empty" });
@@ -247,7 +250,7 @@ router.post(
       const resolvedItems = [];
 
       for (const item of items) {
-        const { product_id, variant_id, quantity } = item;
+        const { product_id, variant_id, quantity, addon_option_ids } = item;
         if (!product_id || !quantity || quantity < 1)
           throw { status: 400, message: "Invalid item in cart" };
 
@@ -261,7 +264,7 @@ router.post(
         if (!product.is_available)
           throw { status: 409, message: `${product.name} is currently unavailable` };
 
-        let unitPrice = Number(product.price);
+        let unitPrice = Number(product.discounted_price ?? product.price);
         let variantName = null;
         let resolvedVariantId = null;
 
@@ -280,38 +283,77 @@ router.post(
           resolvedVariantId = variant.id;
         }
 
+        // Add-ons: re-validate against THIS product's own groups and re-price from the DB.
+        let selectedAddons = [];
+        if (Array.isArray(addon_option_ids) && addon_option_ids.length > 0) {
+          const optionsResult = await client.query(
+            `SELECT ao.* FROM addon_options ao
+             JOIN addon_groups ag ON ag.id = ao.group_id
+             WHERE ao.id = ANY($1::int[]) AND ag.product_id = $2 AND ao.is_available = true`,
+            [addon_option_ids, product_id]
+          );
+          if (optionsResult.rows.length !== addon_option_ids.length)
+            throw { status: 400, message: "One or more selected add-ons are invalid" };
+
+          selectedAddons = optionsResult.rows.map((o) => ({ name: o.name, price: Number(o.price) }));
+          unitPrice += selectedAddons.reduce((s, a) => s + a.price, 0);
+        }
+
         const lineTotal = unitPrice * quantity;
         subtotal += lineTotal;
         resolvedItems.push({
           product_id, product_name: product.name,
           variant_id: resolvedVariantId, variant_name: variantName,
           unit_price: unitPrice, quantity, line_total: lineTotal,
+          selected_addons: selectedAddons,
         });
       }
+
+      // Voucher/discount — re-validated and re-priced server-side, same as the public website flow.
+      let discountAmount = 0;
+      let appliedVoucherCode = null;
+      if (voucher_code) {
+        const { error, status, voucher, discount } = await validateVoucher(client, voucher_code, subtotal);
+        if (error) throw { status, message: error };
+        discountAmount = discount;
+        appliedVoucherCode = voucher.code;
+      }
+
+      const settingsResult = await client.query("SELECT tax_rate FROM site_settings WHERE id = 1");
+      const taxRate = Number(settingsResult.rows[0]?.tax_rate || 0);
+      const taxAmount = Math.round((subtotal - discountAmount) * (taxRate / 100) * 100) / 100;
+      const total = subtotal - discountAmount + taxAmount;
 
       const orderCode = generateOrderCode();
       const orderResult = await client.query(
         `INSERT INTO orders
      (branch_id, source, order_type, status, subtotal, total,
-      payment_method, customer_name, customer_phone, customer_address, created_by, order_code)
-   VALUES ($1, $2, $3, 'pending', $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *`,
+      payment_method, customer_name, customer_phone, customer_address, created_by, order_code,
+      table_number, discount_amount, voucher_code, tax_amount)
+   VALUES ($1, $2, $3, 'pending', $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) RETURNING *`,
         [
-          branchId, orderSource, finalOrderType, subtotal, subtotal,
+          branchId, orderSource, finalOrderType, subtotal, total,
           payment_method || "cash", customer_name || null,
-          customer_phone || null, customer_address || null, req.user.id, orderCode
+          customer_phone || null, customer_address || null, req.user.id, orderCode,
+          table_number || null, discountAmount, appliedVoucherCode, taxAmount,
         ]
       );
       const order = orderResult.rows[0];
+
+      if (appliedVoucherCode) {
+        await client.query("UPDATE vouchers SET used_count = used_count + 1 WHERE code = $1", [appliedVoucherCode]);
+      }
 
       const insertedItems = [];
       for (const it of resolvedItems) {
         const itemResult = await client.query(
           `INSERT INTO order_items
              (order_id, product_id, product_name, variant_id, variant_name,
-              unit_price, quantity, line_total)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
+              unit_price, quantity, line_total, selected_addons)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
           [order.id, it.product_id, it.product_name, it.variant_id,
-          it.variant_name, it.unit_price, it.quantity, it.line_total]
+          it.variant_name, it.unit_price, it.quantity, it.line_total,
+          JSON.stringify(it.selected_addons)]
         );
         insertedItems.push(itemResult.rows[0]);
       }
