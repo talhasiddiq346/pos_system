@@ -11,7 +11,7 @@ export default function BannerCarousel({ banners }: { banners: Banner[] }) {
   if (banners.length === 0) return null;
 
   return (
-    <div className="px-2 sm:px-4 py-6 md:py-8 relative">
+    <div className="px-2 sm:px-4 md:px-0 py-6 md:py-0 relative">
       <Swiper
         modules={[Navigation, Pagination, Autoplay]}
         pagination={{ clickable: true }}
@@ -21,11 +21,11 @@ export default function BannerCarousel({ banners }: { banners: Banner[] }) {
         }}
         autoplay={banners.length > 1 ? { delay: 5000, disableOnInteraction: false } : false}
         loop={banners.length > 1}
-        className="w-full rounded-md sm:rounded-3xl"
+        className="w-full rounded-md sm:rounded-3xl md:rounded-none"
       >
         {banners.map((banner, i) => {
           const slide = (
-            <div className="relative rounded-md sm:rounded-3xl overflow-hidden h-56 sm:h-72 md:h-112 bg-[#EDE8E1]">
+            <div className="relative md:rounded-none rounded-md sm:rounded-3xl overflow-hidden h-56 sm:h-72 md:h-[28rem] bg-[#EDE8E1]">
               <img src={banner.image_url} alt="" className="w-full h-full object-cover" />
             </div>
           );

@@ -342,7 +342,7 @@ export default function WebsiteMenu({
         </div>
       )}
 
-      <div className="sticky top-20 z-20" style={{ background: site.backgroundColor }}>
+      <div className="sticky top-24 z-20" style={{ background: site.backgroundColor }}>
         <CategoryCarousel
           categories={categoryList.map((cat) => ({ name: cat, image_url: categoryImages[cat] }))}
           activeCategory={activeCategory}

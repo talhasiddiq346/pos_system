@@ -84,27 +84,30 @@ export default function ProductDetailModal({
         return;
       } catch (err) {
         if ((err as Error)?.name === "AbortError") return; // user cancelled the share sheet
-        // otherwise fall through and try clipboard/manual copy below
+        // otherwise fall through to the manual link box below
       }
     }
 
+    // navigator.share/clipboard need a secure context (https or localhost) — both are
+    // silently undefined on a plain http:// LAN address, which is how this gets tested
+    // on a phone against the dev server. Always fall back to a visible copyable link
+    // instead of an invisible clipboard write that may quietly do nothing.
+    let autoCopied = false;
     try {
       if (navigator.clipboard?.writeText) {
         await navigator.clipboard.writeText(shareUrl);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-        return;
+        autoCopied = true;
       }
     } catch {
-      // fall through to manual fallback below
+      autoCopied = false;
     }
+    if (!autoCopied) autoCopied = copyWithFallback(shareUrl);
 
-    if (copyWithFallback(shareUrl)) {
+    if (autoCopied) {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    } else {
-      setShowManualLink(true);
     }
+    setShowManualLink(true);
   }
 
   const variantGroup: AddonGroup | null = useMemo(() => {
@@ -239,7 +242,7 @@ export default function ProductDetailModal({
               </button>
               {showManualLink && shareUrl && (
                 <div className="absolute top-10 right-0 z-10 bg-white border border-[#E8DFD0] rounded-lg shadow-lg p-2.5 w-64">
-                  <p className="text-[10px] text-[#6B6259] mb-1.5">Copy this link to share:</p>
+                  <p className="text-[10px] text-[#6B6259] mb-1.5">Share this link:</p>
                   <div className="flex items-center gap-1.5">
                     <input
                       readOnly
@@ -248,11 +251,20 @@ export default function ProductDetailModal({
                       className="flex-1 min-w-0 text-[11px] border border-[#E8DFD0] rounded px-1.5 py-1"
                     />
                     <button
-                      onClick={() => setShowManualLink(false)}
-                      className="text-[10px] font-semibold px-2 py-1 rounded"
+                      onClick={() => {
+                        const ok = copyWithFallback(shareUrl);
+                        if (ok) { setCopied(true); setTimeout(() => setCopied(false), 2000); }
+                      }}
+                      className="text-[10px] font-semibold px-2 py-1 rounded border border-[#E8DFD0] whitespace-nowrap"
                       style={{ color: accentColor }}
                     >
-                      Done
+                      Copy
+                    </button>
+                    <button
+                      onClick={() => setShowManualLink(false)}
+                      className="text-[10px] font-semibold px-1.5 py-1 rounded text-[#6B6259]"
+                    >
+                      ✕
                     </button>
                   </div>
                 </div>
