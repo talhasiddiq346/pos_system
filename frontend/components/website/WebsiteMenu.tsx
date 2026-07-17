@@ -95,6 +95,7 @@ export default function WebsiteMenu({
   const [productModal, setProductModal] = useState<Product | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [categoryImages, setCategoryImages] = useState<Record<string, string>>({});
+  const [categoryOrder, setCategoryOrder] = useState<Record<string, number>>({});
 
   useEffect(() => {
     axios.get<Product[]>(`${API}/public/menu/${branch.id}`)
@@ -102,9 +103,15 @@ export default function WebsiteMenu({
       .catch((err) => console.error("Menu fetch failed:", err))
       .finally(() => setLoading(false));
 
-    axios.get<{ name: string; image_url: string }[]>(`${API}/public/categories/${branch.id}`)
-      .then((r) => setCategoryImages(Object.fromEntries(r.data.map((c) => [c.name, c.image_url]))))
-      .catch(() => setCategoryImages({}));
+    axios.get<{ name: string; image_url: string; sort_order: number }[]>(`${API}/public/categories/${branch.id}`)
+      .then((r) => {
+        setCategoryImages(Object.fromEntries(r.data.map((c) => [c.name, c.image_url])));
+        setCategoryOrder(Object.fromEntries(r.data.map((c) => [c.name, c.sort_order])));
+      })
+      .catch(() => {
+        setCategoryImages({});
+        setCategoryOrder({});
+      });
   }, [branch.id]);
 
   const categoryGroups = useMemo(() => {
@@ -121,7 +128,11 @@ export default function WebsiteMenu({
     return groups;
   }, [products, search]);
 
-  const categoryList = Object.keys(categoryGroups);
+  const categoryList = Object.keys(categoryGroups).sort((a, b) => {
+    const oa = categoryOrder[a] ?? 999999;
+    const ob = categoryOrder[b] ?? 999999;
+    return oa !== ob ? oa - ob : a.localeCompare(b);
+  });
   const heroProducts = products.filter((p) => p.image_url).slice(0, 5);
   const curatedPopular = products.filter((p) => p.is_popular && p.is_available !== false);
   const popularItems = (curatedPopular.length > 0 ? curatedPopular : products.filter((p) => p.image_url && p.is_available !== false)).slice(0, 8);

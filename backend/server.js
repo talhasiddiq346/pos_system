@@ -83,8 +83,13 @@ const globalLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: "Too many requests, please slow down" },
-  // Skip health check and static uploads from rate limit
-  skip: (req) => req.path === "/api/health" || req.path.startsWith("/uploads/"),
+  // Skip health check, static uploads, and read-only public browsing endpoints
+  // (branches/menu/categories are hit on every page load — customers behind the
+  // same NAT/office wifi shouldn't get locked out of just browsing the site).
+  skip: (req) =>
+    req.path === "/api/health" ||
+    req.path.startsWith("/uploads/") ||
+    (req.method === "GET" && req.path.startsWith("/api/public/")),
 });
 app.use("/api/", globalLimiter);
 

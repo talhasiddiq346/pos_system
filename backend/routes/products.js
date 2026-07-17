@@ -145,7 +145,8 @@ router.get("/categories/:branchId", requireAuth, async (req, res) => {
   const result = await pool.query(
     `SELECT COALESCE(p.category, ci.name) AS name,
             COALESCE(p.count, 0)::int AS count,
-            ci.image_url
+            ci.image_url,
+            COALESCE(ci.sort_order, 999999) AS sort_order
      FROM (
        SELECT category, COUNT(*) AS count
        FROM products
@@ -153,10 +154,43 @@ router.get("/categories/:branchId", requireAuth, async (req, res) => {
        GROUP BY category
      ) p
      FULL OUTER JOIN category_images ci ON ci.name = p.category AND ci.branch_id = $1
-     ORDER BY name`,
+     ORDER BY sort_order, name`,
     [branchId]
   );
   res.json(result.rows);
+});
+
+// ═══════════════════════════════════════════════════
+// PATCH reorder categories for a branch
+// ═══════════════════════════════════════════════════
+router.patch("/categories/:branchId/reorder", requireAuth, requireRole("super_admin"), async (req, res) => {
+  const { branchId } = req.params;
+  const { names } = req.body;
+
+  if (!Array.isArray(names) || names.length === 0) {
+    return res.status(400).json({ error: "names must be a non-empty array" });
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    for (let i = 0; i < names.length; i++) {
+      await client.query(
+        `INSERT INTO category_images (branch_id, name, sort_order)
+         VALUES ($1, $2, $3)
+         ON CONFLICT (branch_id, name) DO UPDATE SET sort_order = $3`,
+        [branchId, names[i], i]
+      );
+    }
+    await client.query("COMMIT");
+    res.json({ success: true });
+  } catch (err) {
+    await client.query("ROLLBACK");
+    console.error("Reorder categories failed:", err.message);
+    res.status(500).json({ error: "Failed to reorder categories" });
+  } finally {
+    client.release();
+  }
 });
 
 router.post(

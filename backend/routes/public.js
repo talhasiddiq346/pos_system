@@ -73,11 +73,11 @@ router.get("/menu/:branchId", async (req, res) => {
   })));
 });
 
-// Category pictures for a branch — no auth
+// Category pictures + display order for a branch — no auth
 router.get("/categories/:branchId", async (req, res) => {
   const { branchId } = req.params;
   const result = await pool.query(
-    "SELECT name, image_url FROM category_images WHERE branch_id = $1 AND image_url IS NOT NULL",
+    "SELECT name, image_url, sort_order FROM category_images WHERE branch_id = $1",
     [branchId]
   );
   res.json(result.rows);

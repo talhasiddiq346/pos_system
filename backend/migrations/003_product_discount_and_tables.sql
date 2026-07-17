@@ -23,3 +23,6 @@ ALTER TABLE orders ADD CONSTRAINT orders_tab_status_check CHECK (tab_status IN (
 
 -- Website checkout already collects an email but it was never stored/used — needed for order confirmation emails.
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS customer_email character varying(150);
+
+-- Lets the admin control the display order of categories (website + POS), not just their pictures.
+ALTER TABLE category_images ADD COLUMN IF NOT EXISTS sort_order integer NOT NULL DEFAULT 0;
