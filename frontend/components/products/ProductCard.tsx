@@ -28,6 +28,7 @@ export default function ProductCard({
   const [editPrice, setEditPrice] = useState(p.price);
   const [editDiscountedPrice, setEditDiscountedPrice] = useState(p.discounted_price || "");
   const [editCategory, setEditCategory] = useState(p.category || "");
+  const [editDescription, setEditDescription] = useState(p.description || "");
 
   const [variantName, setVariantName] = useState("");
   const [variantPrice, setVariantPrice] = useState("");
@@ -64,6 +65,7 @@ export default function ProductCard({
         price: Number(editPrice),
         discounted_price: editDiscountedPrice.trim() ? Number(editDiscountedPrice) : null,
         category: editCategory || null,
+        description: editDescription.trim() || null,
       });
       setEditing(false);
       onRefresh();
@@ -191,6 +193,7 @@ export default function ProductCard({
               <input type="number" step="0.01" placeholder="Discounted price" value={editDiscountedPrice} onChange={(e) => setEditDiscountedPrice(e.target.value)} className="border border-[#D0D3CB] rounded-md px-2 py-1 text-sm w-32" />
               <input value={editCategory} placeholder="Category" onChange={(e) => setEditCategory(e.target.value)} className="border border-[#D0D3CB] rounded-md px-2 py-1 text-sm" />
             </div>
+            <input value={editDescription} placeholder="Short description shown to customers" onChange={(e) => setEditDescription(e.target.value)} className="border border-[#D0D3CB] rounded-md px-2 py-1 text-sm w-full" />
             <div className="flex gap-2">
               <button onClick={handleEditSave} className="text-xs px-2.5 py-1 rounded-md bg-[#1B1D1E] text-white font-medium">Save</button>
               <button onClick={() => setEditing(false)} className="text-xs px-2.5 py-1 rounded-md border border-[#C9CCC5] font-medium">Cancel</button>
@@ -227,7 +230,7 @@ export default function ProductCard({
               <button onClick={handleToggleAvailable} className={`text-xs px-2 py-0.5 rounded-full ${p.is_available ? "bg-[#E6F2EF] text-[#1F6F54]" : "bg-[#FBEAE7] text-[#9E3527]"}`}>
                 {p.is_available ? "Available" : "Unavailable"}
               </button>
-              <button onClick={() => { setEditing(true); setEditName(p.name); setEditPrice(p.price); setEditDiscountedPrice(p.discounted_price || ""); setEditCategory(p.category || ""); }} className="text-xs px-2.5 py-1 rounded-md border border-[#C9CCC5] font-medium hover:bg-[#F5F6F4]">Edit</button>
+              <button onClick={() => { setEditing(true); setEditName(p.name); setEditPrice(p.price); setEditDiscountedPrice(p.discounted_price || ""); setEditCategory(p.category || ""); setEditDescription(p.description || ""); }} className="text-xs px-2.5 py-1 rounded-md border border-[#C9CCC5] font-medium hover:bg-[#F5F6F4]">Edit</button>
               <button onClick={handleDelete} className="text-xs px-2.5 py-1 rounded-md border border-[#F0C9C2] text-[#9E3527] font-medium hover:bg-[#FBEAE7]">Remove</button>
             </div>
           </div>

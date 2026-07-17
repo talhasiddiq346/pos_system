@@ -145,12 +145,12 @@ export default function ProductDetailModal({
       onClick={onClose}
     >
       <div
-        className="bg-white w-full sm:max-w-4xl sm:rounded-2xl rounded-t-3xl shadow-2xl max-h-[92vh] flex flex-col lg:flex-row overflow-hidden"
+        className="bg-white w-full sm:max-w-4xl sm:rounded-2xl rounded-t-3xl shadow-2xl h-[92vh] sm:h-auto sm:max-h-[92vh] flex flex-col lg:flex-row overflow-hidden min-h-0"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Image column */}
         <div className="lg:w-[40%] shrink-0 p-4 sm:p-6 flex flex-col">
-          <div className="w-full aspect-square rounded-xl overflow-hidden bg-[#F5F1EB] flex items-center justify-center">
+          <div className="w-full h-[26vh] sm:h-auto sm:aspect-square rounded-xl overflow-hidden bg-[#F5F1EB] flex items-center justify-center">
             {imgSrc ? (
               <img src={imgSrc} alt={product.name} className="w-full h-full object-cover" />
             ) : (
@@ -160,7 +160,7 @@ export default function ProductDetailModal({
         </div>
 
         {/* Details column */}
-        <div className="flex-1 min-w-0 flex flex-col lg:border-l border-[#E8DFD0]">
+        <div className="flex-1 min-w-0 min-h-0 flex flex-col lg:border-l border-[#E8DFD0]">
           <div className="flex items-start justify-between gap-3 px-5 sm:px-6 pt-5 sm:pt-6">
             <h2 className="text-2xl font-bold text-[#1A1613]">{product.name}</h2>
             <div className="flex items-center gap-2 shrink-0">
@@ -185,7 +185,7 @@ export default function ProductDetailModal({
             )}
           </p>
 
-          <div className="flex-1 overflow-y-auto px-5 sm:px-6 pb-2 mt-4">
+          <div className="flex-1 min-h-0 overflow-y-auto px-5 sm:px-6 pb-2 mt-4">
             {allGroups.map((g) => (
               <div key={g.id} className="mb-6">
                 <div className="flex items-center gap-2 mb-3">

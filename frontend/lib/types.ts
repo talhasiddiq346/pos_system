@@ -53,6 +53,7 @@ export type Product = {
   price: string;
   discounted_price: string | null;
   category: string | null;
+  description: string | null;
   image_url: string | null;
   is_available: boolean;
   is_popular: boolean;

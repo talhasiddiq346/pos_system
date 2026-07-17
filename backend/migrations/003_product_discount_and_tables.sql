@@ -26,3 +26,6 @@ ALTER TABLE orders ADD COLUMN IF NOT EXISTS customer_email character varying(150
 
 -- Lets the admin control the display order of categories (website + POS), not just their pictures.
 ALTER TABLE category_images ADD COLUMN IF NOT EXISTS sort_order integer NOT NULL DEFAULT 0;
+
+-- Short customer-facing blurb shown under the product name on the website/POS.
+ALTER TABLE products ADD COLUMN IF NOT EXISTS description text;

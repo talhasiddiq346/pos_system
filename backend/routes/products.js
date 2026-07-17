@@ -142,6 +142,9 @@ router.get("/categories/:branchId", requireAuth, async (req, res) => {
   }
 
   // LEFT/FULL join so a category with a picture but no products yet still shows up.
+  // ci must be pre-filtered to this branch in a subquery — filtering only in the ON
+  // clause lets unmatched category_images rows from OTHER branches leak into the
+  // FULL OUTER JOIN result whenever their name happens to collide.
   const result = await pool.query(
     `SELECT COALESCE(p.category, ci.name) AS name,
             COALESCE(p.count, 0)::int AS count,
@@ -153,7 +156,9 @@ router.get("/categories/:branchId", requireAuth, async (req, res) => {
        WHERE branch_id = $1 AND category IS NOT NULL AND category != ''
        GROUP BY category
      ) p
-     FULL OUTER JOIN category_images ci ON ci.name = p.category AND ci.branch_id = $1
+     FULL OUTER JOIN (
+       SELECT name, image_url, sort_order FROM category_images WHERE branch_id = $1
+     ) ci ON ci.name = p.category
      ORDER BY sort_order, name`,
     [branchId]
   );
@@ -338,7 +343,7 @@ router.delete(
 // POST create product (no image yet)
 // ═══════════════════════════════════════════════════
 router.post("/", requireAuth, requireRole("super_admin", "branch_admin"), async (req, res) => {
-  const { name, price, category, branch_id, discounted_price } = req.body;
+  const { name, price, category, branch_id, discounted_price, description } = req.body;
   if (!name || price === undefined || price === null) {
     return res.status(400).json({ error: "Name and price are required" });
   }
@@ -353,9 +358,9 @@ router.post("/", requireAuth, requireRole("super_admin", "branch_admin"), async 
   if (!finalBranchId) return res.status(400).json({ error: "Branch is required" });
 
   const result = await pool.query(
-    `INSERT INTO products (branch_id, name, price, category, discounted_price)
-     VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-    [finalBranchId, name, price, category || null, discounted_price ? Number(discounted_price) : null]
+    `INSERT INTO products (branch_id, name, price, category, discounted_price, description)
+     VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+    [finalBranchId, name, price, category || null, discounted_price ? Number(discounted_price) : null, description || null]
   );
   res.status(201).json({ ...result.rows[0], variants: [] });
 });
@@ -365,7 +370,7 @@ router.post("/", requireAuth, requireRole("super_admin", "branch_admin"), async 
 // ═══════════════════════════════════════════════════
 router.patch("/:id", requireAuth, requireRole("super_admin", "branch_admin"), async (req, res) => {
   const { id } = req.params;
-  const { name, price, category, is_available, is_popular, discounted_price } = req.body;
+  const { name, price, category, is_available, is_popular, discounted_price, description } = req.body;
 
   const existing = await pool.query("SELECT * FROM products WHERE id = $1", [id]);
   if (existing.rows.length === 0) return res.status(404).json({ error: "Product not found" });
@@ -391,11 +396,13 @@ router.patch("/:id", requireAuth, requireRole("super_admin", "branch_admin"), as
        category = COALESCE($3, category),
        is_available = COALESCE($4, is_available),
        is_popular = COALESCE($5, is_popular),
-       discounted_price = $6
-     WHERE id = $7 RETURNING *`,
+       discounted_price = $6,
+       description = COALESCE($7, description)
+     WHERE id = $8 RETURNING *`,
     [
       name ?? null, price ?? null, category ?? null, is_available ?? null, is_popular ?? null,
       discounted_price !== undefined ? (discounted_price === null ? null : Number(discounted_price)) : product.discounted_price,
+      description ?? null,
       id,
     ]
   );
