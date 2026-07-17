@@ -56,23 +56,54 @@ export default function ProductDetailModal({
   shareUrl?: string;
 }) {
   const [copied, setCopied] = useState(false);
+  const [showManualLink, setShowManualLink] = useState(false);
+
+  function copyWithFallback(text: string): boolean {
+    try {
+      const textarea = document.createElement("textarea");
+      textarea.value = text;
+      textarea.style.position = "fixed";
+      textarea.style.opacity = "0";
+      document.body.appendChild(textarea);
+      textarea.focus();
+      textarea.select();
+      const ok = document.execCommand("copy");
+      document.body.removeChild(textarea);
+      return ok;
+    } catch {
+      return false;
+    }
+  }
 
   async function handleShare() {
     if (!shareUrl) return;
+
     if (navigator.share) {
       try {
         await navigator.share({ title: product.name, text: `Check out ${product.name}`, url: shareUrl });
-      } catch {
-        // user cancelled the native share sheet — no-op
+        return;
+      } catch (err) {
+        if ((err as Error)?.name === "AbortError") return; // user cancelled the share sheet
+        // otherwise fall through and try clipboard/manual copy below
       }
-      return;
     }
+
     try {
-      await navigator.clipboard.writeText(shareUrl);
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(shareUrl);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+        return;
+      }
+    } catch {
+      // fall through to manual fallback below
+    }
+
+    if (copyWithFallback(shareUrl)) {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    } catch {
-      // clipboard unavailable — silently ignore
+    } else {
+      setShowManualLink(true);
     }
   }
 
@@ -206,6 +237,26 @@ export default function ProductDetailModal({
               >
                 <X size={16} />
               </button>
+              {showManualLink && shareUrl && (
+                <div className="absolute top-10 right-0 z-10 bg-white border border-[#E8DFD0] rounded-lg shadow-lg p-2.5 w-64">
+                  <p className="text-[10px] text-[#6B6259] mb-1.5">Copy this link to share:</p>
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      readOnly
+                      value={shareUrl}
+                      onFocus={(e) => e.target.select()}
+                      className="flex-1 min-w-0 text-[11px] border border-[#E8DFD0] rounded px-1.5 py-1"
+                    />
+                    <button
+                      onClick={() => setShowManualLink(false)}
+                      className="text-[10px] font-semibold px-2 py-1 rounded"
+                      style={{ color: accentColor }}
+                    >
+                      Done
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
           {product.description && (
