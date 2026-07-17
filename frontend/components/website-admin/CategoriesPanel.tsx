@@ -12,19 +12,26 @@ export default function CategoriesPanel() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   async function load() {
     setLoading(true);
-    const branchesRes = await api.get<Branch[]>("/branches");
-    setBranches(branchesRes.data);
-    const targetBranchId = branchId || branchesRes.data[0]?.id || "";
-    if (!branchId && branchesRes.data.length > 0) setBranchId(branchesRes.data[0].id);
+    setError(null);
+    try {
+      const branchesRes = await api.get<Branch[]>("/branches");
+      setBranches(branchesRes.data);
+      const targetBranchId = branchId || branchesRes.data[0]?.id || "";
+      if (!branchId && branchesRes.data.length > 0) setBranchId(branchesRes.data[0].id);
 
-    if (targetBranchId) {
-      const catRes = await api.get<Category[]>(`/products/categories/${targetBranchId}`);
-      setCategories([...catRes.data].sort((a, b) => a.sort_order - b.sort_order));
+      if (targetBranchId) {
+        const catRes = await api.get<Category[]>(`/products/categories/${targetBranchId}`);
+        setCategories([...catRes.data].sort((a, b) => a.sort_order - b.sort_order));
+      }
+    } catch (err: any) {
+      setError(err?.response?.data?.error || "Failed to load categories.");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }
 
   useEffect(() => {
@@ -50,10 +57,13 @@ export default function CategoriesPanel() {
   async function saveOrder() {
     if (!branchId) return;
     setSaving(true);
+    setError(null);
     try {
       await api.patch(`/products/categories/${branchId}/reorder`, {
         names: categories.map((c) => c.name),
       });
+    } catch (err: any) {
+      setError(err?.response?.data?.error || "Failed to save category order.");
     } finally {
       setSaving(false);
     }
@@ -89,6 +99,12 @@ export default function CategoriesPanel() {
             {saving ? "Saving..." : "Save order"}
           </button>
         </div>
+
+        {error && (
+          <div className="px-5 py-2 bg-[#FBECEC] text-[#B3261E] text-xs border-b border-[#F0F1EE]">
+            {error}
+          </div>
+        )}
 
         {loading ? (
           <p className="px-5 py-6 text-sm text-[#6B7068]">Loading categories...</p>

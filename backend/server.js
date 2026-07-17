@@ -76,10 +76,11 @@ app.use(cookieParser());
 
 // ── Rate limits
 
-// Global limit: 300 requests per 15 min per IP (generous for normal use)
+// Global limit: 1500 requests per 15 min per IP (generous for normal use — an
+// active admin panel session alone can burn hundreds of small GET/PATCH calls)
 const globalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 300,
+  max: 1500,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: "Too many requests, please slow down" },
