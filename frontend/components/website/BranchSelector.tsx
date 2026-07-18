@@ -67,10 +67,11 @@ export default function BranchSelector({
         {[...Array(10)].map((_, i) => (
           <div
             key={i}
-            className="rounded-2xl bg-gradient-to-br"
+            className="rounded-2xl bg-gradient-to-br animate-float"
             style={{
               background: `linear-gradient(${i * 36}deg, ${site.primaryColor}, ${site.secondaryColor})`,
               aspectRatio: "3/4",
+              animationDelay: `${i * 0.3}s`,
             }}
           />
         ))}
@@ -79,7 +80,7 @@ export default function BranchSelector({
       {/* Track order button — top right corner */}
       <button
         onClick={onTrack}
-        className="absolute top-4 right-4 z-20 bg-white text-[#1A1613] text-xs font-semibold px-3 py-2 rounded-full border border-[#E8DFD0] hover:bg-[#FAF8F5] shadow-sm flex items-center gap-1.5"
+        className="absolute top-4 right-4 z-20 bg-white text-[#1A1613] text-xs font-semibold px-3 py-2 rounded-full border border-[#E8DFD0] hover:bg-[#FAF8F5] shadow-sm flex items-center gap-1.5 transition-all hover:-translate-y-0.5 hover:shadow-md animate-fade-in-down"
       >
         📦 Track order
       </button>
@@ -87,7 +88,7 @@ export default function BranchSelector({
       {/* Main content */}
       <div className="relative z-10 min-h-screen flex flex-col items-center justify-center px-4 py-16">
         {/* Logo — floating above modal */}
-        <div className="mb-[-40px] relative z-20">
+        <div className="mb-[-40px] relative z-20 animate-pop-in">
           <div
             className="w-20 h-20 rounded-2xl flex items-center justify-center shadow-xl border-4 border-white overflow-hidden"
             style={{ background: site.logoUrl ? "white" : `linear-gradient(135deg, ${site.primaryColor}, ${site.secondaryColor})` }}
@@ -101,7 +102,7 @@ export default function BranchSelector({
         </div>
 
         {/* Modal card */}
-        <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden">
+        <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden animate-scale-in stagger-1">
           {/* Header strip */}
           <div className="h-16" style={{ background: `linear-gradient(90deg, ${site.primaryColor}, ${site.secondaryColor})` }} />
 
@@ -188,7 +189,7 @@ export default function BranchSelector({
               onClick={handleSelect}
               disabled={!selectedBranchId}
               className={`w-full py-3.5 rounded-full text-white font-semibold text-base transition-all ${
-                selectedBranchId ? "shadow-md active:scale-[0.98]" : "cursor-not-allowed"
+                selectedBranchId ? "shadow-md hover:shadow-lg hover:-translate-y-0.5 active:scale-[0.98]" : "cursor-not-allowed"
               }`}
               style={{ background: selectedBranchId ? site.primaryColor : "#F0BFA8" }}
             >
@@ -212,17 +213,17 @@ export default function BranchSelector({
 
         {/* Legal / info links */}
         <div className="mt-3 flex items-center gap-x-3 gap-y-1 flex-wrap justify-center text-[11px] text-[#6B6259]/80">
-          <a href="/about" className="hover:underline">About</a>
+          <a href="/about" className="hover-underline">About</a>
           <span>·</span>
-          <a href="/contact" className="hover:underline">Contact</a>
+          <a href="/contact" className="hover-underline">Contact</a>
           <span>·</span>
-          <a href="/faq" className="hover:underline">FAQs</a>
+          <a href="/faq" className="hover-underline">FAQs</a>
           <span>·</span>
-          <a href="/terms" className="hover:underline">Terms</a>
+          <a href="/terms" className="hover-underline">Terms</a>
           <span>·</span>
-          <a href="/privacy-policy" className="hover:underline">Privacy</a>
+          <a href="/privacy-policy" className="hover-underline">Privacy</a>
           <span>·</span>
-          <a href="/refund-policy" className="hover:underline">Refunds</a>
+          <a href="/refund-policy" className="hover-underline">Refunds</a>
         </div>
         <p className="mt-2 text-[11px] text-[#6B6259]/60">© {new Date().getFullYear()} {site.brandName}. All rights reserved.</p>
       </div>

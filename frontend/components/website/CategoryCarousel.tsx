@@ -20,18 +20,19 @@ export default function CategoryCarousel({
   return (
     <div className="max-w-7xl mx-auto px-3 md:px-6 py-4 sm:py-6">
       <div className="flex items-center gap-2.5 overflow-x-auto no-scrollbar pb-1">
-        {categories.map((cat) => {
+        {categories.map((cat, i) => {
           const isActive = activeCategory === cat.name;
           return (
             <button
               key={cat.name}
               onClick={() => onSelect(cat.name)}
-              className="shrink-0 px-4 py-2 rounded-full text-xs sm:text-sm font-bold uppercase tracking-wide transition-all hover:opacity-75 hover:scale-105 cursor-pointer"
-              style={
-                isActive
+              className="shrink-0 px-4 py-2 rounded-full text-xs sm:text-sm font-bold uppercase tracking-wide transition-all hover:opacity-75 hover:scale-105 active:scale-95 cursor-pointer animate-fade-in-up"
+              style={{
+                ...(isActive
                   ? { background: accentColor, color: "#ffffff" }
-                  : { background: accentTint, color: accentColor }
-              }
+                  : { background: accentTint, color: accentColor }),
+                animationDelay: `${Math.min(i * 0.04, 0.4)}s`,
+              }}
             >
               {cat.name}
             </button>

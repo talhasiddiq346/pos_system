@@ -14,11 +14,11 @@ export default function SiteHeader({
   const { brandName, logoUrl } = useSiteSettings();
 
   return (
-    <header className="sticky top-0 z-30 bg-white border-b border-[#E8DFD0] shadow-sm">
+    <header className="sticky top-0 z-30 bg-white border-b border-[#E8DFD0] shadow-sm animate-fade-in-down">
       <div className={`${maxWidth} mx-auto px-3 md:px-6 h-24 flex items-center justify-between gap-2 relative`}>
         <div className="flex items-center gap-2 min-w-0">{left}</div>
 
-        <div className="absolute left-1/2 -translate-x-1/2">
+        <div className="absolute left-1/2 -translate-x-1/2 transition-transform hover:scale-105">
           {logoUrl ? (
             <div className="h-20 py-1.5 flex items-center justify-center overflow-hidden">
               <img src={logoUrl} alt={brandName} className="h-full w-auto object-contain" />

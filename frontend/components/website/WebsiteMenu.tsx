@@ -203,7 +203,7 @@ export default function WebsiteMenu({
           <>
             <button
               onClick={onBack}
-              className="hidden md:flex items-center gap-1.5 px-3 py-2 rounded-md text-black text-sm font-medium whitespace-nowrap transition"
+              className="hidden md:flex items-center gap-1.5 px-3 py-2 rounded-md text-black text-sm font-medium whitespace-nowrap transition-all hover:scale-105 active:scale-95"
               style={{ background: site.secondaryColor }}
             >
               <MapPin size={16} /> {branch.name}
@@ -214,16 +214,16 @@ export default function WebsiteMenu({
                 href={`https://wa.me/${branch.phone.replace(/[^0-9]/g, "")}`}
                 target="_blank"
                 rel="noreferrer"
-                className="hidden md:flex items-center gap-1.5 px-3 py-2 rounded-md text-black text-sm font-medium whitespace-nowrap transition"
+                className="hidden md:flex items-center gap-1.5 px-3 py-2 rounded-md text-black text-sm font-medium whitespace-nowrap transition-all hover:scale-105 active:scale-95"
                 style={{ background: site.secondaryColor }}
               >
-                <MessageCircle size={16} /> WhatsApp
+                <MessageCircle size={16} className="animate-pulse-soft" /> WhatsApp
               </a>
             )}
 
             <button
               onClick={() => setMobileMenuOpen(true)}
-              className="md:hidden w-10 h-10 rounded-full flex items-center justify-center hover:bg-[#FAF8F5]"
+              className="md:hidden w-10 h-10 rounded-full flex items-center justify-center hover:bg-[#FAF8F5] transition-transform active:scale-90"
             >
               <Menu size={20} className="text-[#1A1613]" />
             </button>
@@ -233,20 +233,21 @@ export default function WebsiteMenu({
           <>
             <button
               onClick={onTrack}
-              className="hidden md:flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-semibold text-[#6B6259] hover:bg-[#FAF8F5]"
+              className="hidden md:flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-semibold text-[#6B6259] hover:bg-[#FAF8F5] transition-all hover:scale-105 active:scale-95"
             >
               <Package size={15} /> Track
             </button>
 
             <button
               onClick={() => setShowCart(true)}
-              className="relative w-10 h-10 rounded-full flex items-center justify-center hover:bg-[#FAF8F5]"
+              className="relative w-10 h-10 rounded-full flex items-center justify-center hover:bg-[#FAF8F5] transition-transform hover:scale-110 active:scale-95"
               style={{ color: site.primaryColor }}
             >
               <ShoppingCart size={20} />
               {cartCount > 0 && (
                 <span
-                  className="absolute -top-0.5 -right-0.5 min-w-[20px] h-5 px-1 rounded-full text-white text-[10px] font-bold flex items-center justify-center"
+                  key={cartCount}
+                  className="absolute -top-0.5 -right-0.5 min-w-5 h-5 px-1 rounded-full text-white text-[10px] font-bold flex items-center justify-center animate-count-bump"
                   style={{ background: site.primaryColor }}
                 >
                   {cartCount}
@@ -364,10 +365,10 @@ export default function WebsiteMenu({
       />
 
       {site.activeVoucher && (
-        <div className="max-w-3xl mx-auto px-3 md:px-6 mt-3">
+        <div className="max-w-3xl mx-auto px-3 md:px-6 mt-3 animate-fade-in-down">
           <div className="bg-white rounded-2xl px-4 py-3 flex items-center gap-3 shadow-sm border border-[#E8DFD0]">
             <span
-              className="w-8 h-8 rounded-full text-white flex items-center justify-center text-sm font-bold shrink-0"
+              className="w-8 h-8 rounded-full text-white flex items-center justify-center text-sm font-bold shrink-0 animate-pulse-soft"
               style={{ background: site.primaryColor }}
             >
               %
@@ -386,16 +387,18 @@ export default function WebsiteMenu({
 
       {popularItems.length > 0 && !search && (
         <div className="max-w-7xl mx-auto px-3 md:px-6 mt-8">
-          <div className="mb-4">
+          <div className="mb-4 animate-fade-in-up">
             <h2 className="text-xl md:text-2xl font-bold text-[#1A1613] flex items-center gap-2">
-              🔥 Popular Items
+              <span className="animate-wiggle inline-block">🔥</span> Popular Items
             </h2>
             <p className="text-xs md:text-sm text-[#6B6259] mt-0.5">Most ordered right now</p>
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
-            {popularItems.slice(0, 4).map((p) => (
-              <ProductCardPopular key={p.id} product={p} onAdd={handleAddClick} />
+            {popularItems.slice(0, 4).map((p, i) => (
+              <div key={p.id} className="animate-fade-in-up" style={{ animationDelay: `${i * 0.08}s` }}>
+                <ProductCardPopular product={p} onAdd={handleAddClick} />
+              </div>
             ))}
           </div>
         </div>
@@ -403,18 +406,22 @@ export default function WebsiteMenu({
 
       <div className="max-w-7xl mx-auto px-3 md:px-6 mt-10 pb-32">
         {loading ? (
-          <div className="text-center py-20 text-[#6B6259]">Loading menu...</div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
+            {[...Array(6)].map((_, i) => (
+              <div key={i} className="h-28 rounded-xl animate-shimmer-bg animate-fade-in" style={{ animationDelay: `${i * 0.05}s` }} />
+            ))}
+          </div>
         ) : categoryList.length === 0 ? (
-          <div className="text-center py-20 text-[#6B6259]">
+          <div className="text-center py-20 text-[#6B6259] animate-fade-in">
             {search ? "No items match your search" : "No items available yet"}
           </div>
         ) : (
-          categoryList.map((cat) => {
+          categoryList.map((cat, catIdx) => {
             const catImg = categoryImages[cat];
             return (
-            <div key={cat} id={`cat-${cat}`} className="mb-10 scroll-mt-24">
+            <div key={cat} id={`cat-${cat}`} className="mb-10 scroll-mt-24 animate-fade-in-up" style={{ animationDelay: `${Math.min(catIdx * 0.06, 0.3)}s` }}>
               <div
-                className="relative h-28 md:h-40 rounded-3xl mb-5 overflow-hidden flex items-center justify-center shadow-lg"
+                className="relative h-28 md:h-40 rounded-3xl mb-5 overflow-hidden flex items-center justify-center shadow-lg transition-transform duration-300 hover:scale-[1.01]"
                 style={!catImg ? { background: `linear-gradient(135deg, ${site.primaryColor}, ${site.secondaryColor})` } : undefined}
               >
                 {catImg && (
@@ -423,8 +430,8 @@ export default function WebsiteMenu({
                 <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-black/10 to-transparent" />
                 {!catImg && (
                   <>
-                    <div className="absolute -top-6 -left-6 w-28 h-28 rounded-full bg-white/15 blur-2xl" />
-                    <div className="absolute -bottom-8 -right-4 w-36 h-36 rounded-full bg-white/10 blur-2xl" />
+                    <div className="absolute -top-6 -left-6 w-28 h-28 rounded-full bg-white/15 blur-2xl animate-float" />
+                    <div className="absolute -bottom-8 -right-4 w-36 h-36 rounded-full bg-white/10 blur-2xl animate-float" style={{ animationDelay: "1s" }} />
                   </>
                 )}
                 <h2 className="relative text-3xl md:text-6xl font-black text-white tracking-tight drop-shadow-md">
@@ -434,8 +441,10 @@ export default function WebsiteMenu({
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
-                {categoryGroups[cat].map((p) => (
-                  <ProductCardMain key={p.id} product={p} onAdd={handleAddClick} />
+                {categoryGroups[cat].map((p, i) => (
+                  <div key={p.id} className="animate-fade-in-up" style={{ animationDelay: `${Math.min(i * 0.05, 0.35)}s` }}>
+                    <ProductCardMain product={p} onAdd={handleAddClick} />
+                  </div>
                 ))}
               </div>
             </div>
@@ -477,15 +486,15 @@ export default function WebsiteMenu({
       )}
 
       {cartCount > 0 && !showCart && (
-        <div className="fixed bottom-4 left-3 right-3 sm:left-4 sm:right-4 z-40">
+        <div className="fixed bottom-4 left-3 right-3 sm:left-4 sm:right-4 z-40 animate-fade-in-up">
           <button
             onClick={() => setShowCart(true)}
-            className="w-full max-w-md mx-auto text-white px-5 py-3.5 rounded-full shadow-2xl flex items-center gap-3 font-semibold active:scale-95 transition-transform"
+            className="w-full max-w-md mx-auto text-white px-5 py-3.5 rounded-full shadow-2xl flex items-center gap-3 font-semibold active:scale-95 hover:-translate-y-0.5 hover:shadow-[0_12px_30px_-8px_rgba(0,0,0,0.4)] transition-all"
             style={{ background: site.primaryColor }}
           >
             <span className="relative shrink-0">
               <ShoppingCart size={20} />
-              <span className="absolute -top-2 -right-2 w-4 h-4 rounded-full bg-white text-[10px] font-bold flex items-center justify-center" style={{ color: site.primaryColor }}>
+              <span key={cartCount} className="absolute -top-2 -right-2 w-4 h-4 rounded-full bg-white text-[10px] font-bold flex items-center justify-center animate-count-bump" style={{ color: site.primaryColor }}>
                 {cartCount}
               </span>
             </span>
@@ -680,22 +689,22 @@ function CartSidebar({
   return (
     <>
       <div
-        className="fixed inset-0 z-40 bg-black/50"
+        className="fixed inset-0 z-40 bg-black/50 animate-fade-in"
         onClick={onClose}
       />
 
       <div
-        className="fixed top-0 right-0 bottom-0 z-40 w-full md:w-96 bg-white shadow-2xl overflow-y-auto translate-x-0 transition-transform"
+        className="fixed top-0 right-0 bottom-0 z-40 w-full md:w-96 bg-white shadow-2xl overflow-y-auto translate-x-0 transition-transform animate-slide-in-right"
         style={{ display: "flex", flexDirection: "column" }}
       >
         <div className="text-white px-5 py-4 flex items-center justify-between sticky top-0 z-10" style={{ background: site.primaryColor }}>
           <div className="flex items-center gap-2">
-            <span className="text-xl">🛒</span>
+            <span className="text-xl animate-wiggle inline-block">🛒</span>
             <h3 className="font-bold text-lg">Your Cart</h3>
           </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center"
+            className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-transform hover:rotate-90"
           >
             ✕
           </button>
@@ -703,16 +712,16 @@ function CartSidebar({
 
         <div className="flex-1 overflow-y-auto">
           {cart.length === 0 ? (
-            <div className="px-5 py-20 text-center">
-              <div className="text-6xl mb-3">🛒</div>
+            <div className="px-5 py-20 text-center animate-fade-in">
+              <div className="text-6xl mb-3 animate-float">🛒</div>
               <p className="text-[#6B6259] text-sm">Your cart is empty</p>
             </div>
           ) : (
             <div className="px-4 py-4 space-y-3">
-              {cart.map((item: CartItem) => {
+              {cart.map((item: CartItem, i: number) => {
                 const imgSrc = fixImageUrl(item.image_url);
                 return (
-                  <div key={item.key} className="bg-white border border-[#E8DFD0] rounded-2xl p-3 flex items-center gap-3">
+                  <div key={item.key} className="bg-white border border-[#E8DFD0] rounded-2xl p-3 flex items-center gap-3 animate-fade-in-up" style={{ animationDelay: `${Math.min(i * 0.05, 0.3)}s` }}>
                     <div className="w-14 h-14 rounded-xl bg-[#F5F1EB] overflow-hidden flex-shrink-0">
                       {imgSrc ? (
                         <img src={imgSrc} alt={item.product_name} className="w-full h-full object-cover" />
@@ -742,21 +751,21 @@ function CartSidebar({
                     <div className="flex flex-col items-end gap-1">
                       <button
                         onClick={() => onUpdateQty(item.key, -item.quantity)}
-                        className="w-7 h-7 rounded-full border border-[#E8DFD0] flex items-center justify-center text-xs"
+                        className="w-7 h-7 rounded-full border border-[#E8DFD0] flex items-center justify-center text-xs transition-transform hover:scale-110 active:scale-90"
                         style={{ color: site.primaryColor }}
                       >🗑</button>
                       <div className="flex items-center gap-1 border border-[#E8DFD0] rounded-full px-1 py-0.5">
                         <button
                           onClick={() => onUpdateQty(item.key, -1)}
-                          className="w-6 h-6 rounded-full flex items-center justify-center font-bold"
+                          className="w-6 h-6 rounded-full flex items-center justify-center font-bold transition-transform active:scale-75"
                           style={{ color: site.primaryColor }}
                         >−</button>
-                        <span className="text-xs font-bold text-[#1A1613] min-w-[16px] text-center">
+                        <span key={item.quantity} className="text-xs font-bold text-[#1A1613] min-w-4 text-center animate-count-bump">
                           {item.quantity}
                         </span>
                         <button
                           onClick={() => onUpdateQty(item.key, 1)}
-                          className="w-6 h-6 rounded-full flex items-center justify-center font-bold"
+                          className="w-6 h-6 rounded-full flex items-center justify-center font-bold transition-transform active:scale-75"
                           style={{ color: site.primaryColor }}
                         >+</button>
                       </div>
@@ -775,7 +784,7 @@ function CartSidebar({
                     {popularItems.slice(0, 6).map((p: Product) => {
                       const imgSrc = fixImageUrl(p.image_url);
                       return (
-                        <div key={p.id} className="w-28 flex-shrink-0 bg-white border border-[#E8DFD0] rounded-xl overflow-hidden">
+                        <div key={p.id} className="w-28 flex-shrink-0 bg-white border border-[#E8DFD0] rounded-xl overflow-hidden transition-transform hover:-translate-y-1 hover:shadow-md">
                           <div className="relative aspect-square bg-[#F5F1EB]">
                             {imgSrc ? (
                               <img src={imgSrc} alt={p.name} className="w-full h-full object-cover" />
@@ -786,7 +795,7 @@ function CartSidebar({
                             )}
                             <button
                               onClick={() => onAdd(p)}
-                              className="absolute bottom-1 right-1 w-6 h-6 rounded-full text-white flex items-center justify-center text-xs font-bold"
+                              className="absolute bottom-1 right-1 w-6 h-6 rounded-full text-white flex items-center justify-center text-xs font-bold transition-transform hover:scale-125 active:scale-90"
                               style={{ background: site.primaryColor }}
                             >+</button>
                           </div>
@@ -839,10 +848,10 @@ function CartSidebar({
           <div className="border-t border-[#E8DFD0] p-4 sticky bottom-0 bg-white">
             <button
               onClick={onCheckout}
-              className="w-full py-3.5 rounded-full text-white font-bold text-base flex items-center justify-center gap-2 shadow-lg active:scale-[0.98] transition-transform"
+              className="w-full py-3.5 rounded-full text-white font-bold text-base flex items-center justify-center gap-2 shadow-lg active:scale-[0.98] hover:shadow-xl hover:-translate-y-0.5 transition-all group"
               style={{ background: site.primaryColor }}
             >
-              Checkout <span>→</span>
+              Checkout <span className="transition-transform group-hover:translate-x-1">→</span>
             </button>
             <p className="text-center text-xs text-[#6B6259] mt-3">
               Your order will be ready for{" "}

@@ -57,7 +57,7 @@ export default function Footer({ onTrack }: { onTrack?: () => void }) {
           {onTrack && (
             <button
               onClick={onTrack}
-              className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full transition-colors"
+              className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full transition-all hover:scale-105 active:scale-95"
               style={{ background: site.secondaryColor, color: site.primaryColor }}
             >
               📦 Track your order
@@ -68,12 +68,12 @@ export default function Footer({ onTrack }: { onTrack?: () => void }) {
               { label: "Facebook", icon: "f" },
               { label: "Instagram", icon: "◎" },
               { label: "WhatsApp", icon: "☏" },
-            ].map((s) => (
+            ].map((s, i) => (
               <span
                 key={s.label}
                 title={s.label}
-                className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold cursor-default transition-transform hover:scale-110"
-                style={{ background: site.secondaryColor, color: site.primaryColor }}
+                className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold cursor-default transition-all hover:scale-125 hover:-translate-y-1 hover:shadow-md animate-fade-in-up"
+                style={{ background: site.secondaryColor, color: site.primaryColor, animationDelay: `${i * 0.08}s` }}
               >
                 {s.icon}
               </span>
@@ -82,7 +82,7 @@ export default function Footer({ onTrack }: { onTrack?: () => void }) {
         </div>
 
         {branches.length > 0 && (
-          <div className="col-span-2 sm:col-span-2 lg:col-span-1">
+          <div className="col-span-2 sm:col-span-2 lg:col-span-1 animate-fade-in-up stagger-1">
             <h4 className="text-xs font-bold uppercase tracking-wide text-[#1A1613] mb-3">Our Locations</h4>
             <ul className="space-y-3.5">
               {branches.map((b) => (
@@ -90,7 +90,7 @@ export default function Footer({ onTrack }: { onTrack?: () => void }) {
                   <p className="font-semibold text-[#1A1613]">{b.name}</p>
                   {b.address && <p className="text-xs mt-0.5">📍 {b.address}{b.city ? `, ${b.city}` : ""}</p>}
                   {b.phone && (
-                    <a href={`tel:${b.phone}`} className="text-xs mt-0.5 inline-block hover:underline" style={{ color: site.primaryColor }}>
+                    <a href={`tel:${b.phone}`} className="text-xs mt-0.5 inline-block hover-underline" style={{ color: site.primaryColor }}>
                       ☎ {b.phone}
                     </a>
                   )}
@@ -100,13 +100,13 @@ export default function Footer({ onTrack }: { onTrack?: () => void }) {
           </div>
         )}
 
-        {linkCols.map((col) => (
-          <div key={col.title}>
+        {linkCols.map((col, ci) => (
+          <div key={col.title} className="animate-fade-in-up" style={{ animationDelay: `${(ci + 2) * 0.08}s` }}>
             <h4 className="text-xs font-bold uppercase tracking-wide text-[#1A1613] mb-3">{col.title}</h4>
             <ul className="space-y-2">
               {col.links.map((l) => (
                 <li key={l.href}>
-                  <a href={l.href} className="text-sm text-[#6B6259] hover:underline transition-colors" style={{ ["--hover-color" as string]: site.primaryColor }}>
+                  <a href={l.href} className="text-sm text-[#6B6259] hover-underline transition-colors">
                     {l.label}
                   </a>
                 </li>
@@ -115,15 +115,15 @@ export default function Footer({ onTrack }: { onTrack?: () => void }) {
           </div>
         ))}
 
-        <div>
+        <div className="animate-fade-in-up stagger-4">
           <h4 className="text-xs font-bold uppercase tracking-wide text-[#1A1613] mb-3">Need Help?</h4>
           <p className="text-sm text-[#6B6259]">Have a question about an order, refund, or delivery?</p>
-          <a href="/contact" className="inline-block mt-2 text-sm font-semibold hover:underline" style={{ color: site.primaryColor }}>
+          <a href="/contact" className="inline-block mt-2 text-sm font-semibold hover-underline" style={{ color: site.primaryColor }}>
             Contact support →
           </a>
           <div className="flex items-center gap-2 mt-5">
-            {["Cash", "Card", "Online"].map((m) => (
-              <span key={m} className="text-[10px] font-semibold px-2 py-1 rounded-md border border-[#E8DFD0] text-[#8A8074]">
+            {["Cash", "Card", "Online"].map((m, i) => (
+              <span key={m} className="text-[10px] font-semibold px-2 py-1 rounded-md border border-[#E8DFD0] text-[#8A8074] transition-all hover:scale-110 hover:shadow-sm animate-fade-in-up" style={{ animationDelay: `${0.4 + i * 0.06}s` }}>
                 {m}
               </span>
             ))}

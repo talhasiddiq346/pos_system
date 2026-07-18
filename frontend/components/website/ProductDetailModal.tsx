@@ -199,33 +199,33 @@ export default function ProductDetailModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center sm:p-4 h-dvh"
+      className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center sm:p-4 h-dvh animate-fade-in"
       onClick={onClose}
     >
       <div
-        className="bg-white w-full sm:max-w-4xl sm:rounded-2xl rounded-t-3xl shadow-2xl h-[92dvh] sm:h-auto sm:max-h-[92dvh] flex flex-col lg:flex-row overflow-hidden min-h-0"
+        className="bg-white w-full sm:max-w-4xl sm:rounded-2xl rounded-t-3xl shadow-2xl h-[92dvh] sm:h-auto sm:max-h-[92dvh] flex flex-col lg:flex-row overflow-hidden min-h-0 animate-fade-in-up sm:animate-scale-in"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Image column */}
         <div className="lg:w-[40%] shrink-0 p-4 sm:p-6 flex flex-col">
-          <div className="w-full h-[26dvh] sm:h-auto sm:aspect-square rounded-xl overflow-hidden bg-[#F5F1EB] flex items-center justify-center">
+          <div className="w-full h-[26dvh] sm:h-auto sm:aspect-square rounded-xl overflow-hidden bg-[#F5F1EB] flex items-center justify-center animate-scale-in">
             {imgSrc ? (
-              <img src={imgSrc} alt={product.name} className="w-full h-full object-cover" />
+              <img src={imgSrc} alt={product.name} className="w-full h-full object-cover transition-transform duration-500 hover:scale-110" />
             ) : (
-              <span className="text-6xl">{categoryEmoji}</span>
+              <span className="text-6xl animate-float">{categoryEmoji}</span>
             )}
           </div>
         </div>
 
         {/* Details column */}
         <div className="flex-1 min-w-0 min-h-0 flex flex-col lg:border-l border-[#E8DFD0]">
-          <div className="flex items-start justify-between gap-3 px-5 sm:px-6 pt-5 sm:pt-6">
+          <div className="flex items-start justify-between gap-3 px-5 sm:px-6 pt-5 sm:pt-6 animate-fade-in-up stagger-1">
             <h2 className="text-2xl font-bold text-[#1A1613]">{product.name}</h2>
             <div className="flex items-center gap-2 shrink-0 relative">
               <button
                 onClick={handleShare}
                 title="Share this product"
-                className="w-9 h-9 rounded-full border border-[#E8DFD0] flex items-center justify-center hover:bg-[#FAF8F5]"
+                className="w-9 h-9 rounded-full border border-[#E8DFD0] flex items-center justify-center hover:bg-[#FAF8F5] transition-transform hover:scale-110 active:scale-90"
               >
                 <Share2 size={16} />
               </button>
@@ -236,12 +236,12 @@ export default function ProductDetailModal({
               )}
               <button
                 onClick={onClose}
-                className="w-9 h-9 rounded-full border border-[#E8DFD0] flex items-center justify-center hover:bg-[#FAF8F5]"
+                className="w-9 h-9 rounded-full border border-[#E8DFD0] flex items-center justify-center hover:bg-[#FAF8F5] transition-transform hover:rotate-90 active:scale-90"
               >
                 <X size={16} />
               </button>
               {showManualLink && shareUrl && (
-                <div className="absolute top-10 right-0 z-10 bg-white border border-[#E8DFD0] rounded-lg shadow-lg p-2.5 w-64">
+                <div className="absolute top-10 right-0 z-10 bg-white border border-[#E8DFD0] rounded-lg shadow-lg p-2.5 w-64 animate-scale-in">
                   <p className="text-[10px] text-[#6B6259] mb-1.5">Share this link:</p>
                   <div className="flex items-center gap-1.5">
                     <input
@@ -272,9 +272,9 @@ export default function ProductDetailModal({
             </div>
           </div>
           {product.description && (
-            <p className="text-sm text-[#6B6259] mt-2 leading-relaxed px-5 sm:px-6">{product.description}</p>
+            <p className="text-sm text-[#6B6259] mt-2 leading-relaxed px-5 sm:px-6 animate-fade-in-up stagger-2">{product.description}</p>
           )}
-          <p className="px-5 sm:px-6 mt-2">
+          <p className="px-5 sm:px-6 mt-2 animate-fade-in-up stagger-2">
             <span className="font-bold text-[#1A1613]">Rs. {fmt(basePrice)}</span>
             {hasDiscount && (
               <span className="ml-1.5 text-sm text-[#9CA3AF] line-through">Rs. {fmt(Number(product.price))}</span>
@@ -282,12 +282,12 @@ export default function ProductDetailModal({
           </p>
 
           <div className="flex-1 min-h-0 overflow-y-auto px-5 sm:px-6 pb-2 mt-4">
-            {allGroups.map((g) => (
-              <div key={g.id} className="mb-6">
+            {allGroups.map((g, gi) => (
+              <div key={g.id} className="mb-6 animate-fade-in-up" style={{ animationDelay: `${Math.min(0.15 + gi * 0.05, 0.4)}s` }}>
                 <div className="flex items-center gap-2 mb-3">
                   <h3 className="text-xs font-bold text-[#1A1613] uppercase tracking-wide">{g.title}</h3>
                   {g.required ? (
-                    <span className="bg-[#FBBF24] text-[#1A1613] text-[10px] font-bold px-2 py-0.5 rounded">Required</span>
+                    <span className="bg-[#FBBF24] text-[#1A1613] text-[10px] font-bold px-2 py-0.5 rounded animate-pulse-soft">Required</span>
                   ) : (
                     <span className="bg-[#5EEAD4] text-[#0F2E2A] text-[10px] font-bold px-2 py-0.5 rounded">Optional</span>
                   )}
@@ -302,7 +302,7 @@ export default function ProductDetailModal({
                           key={o.id}
                           type="button"
                           onClick={() => setSingleSelections((prev) => ({ ...prev, [g.id]: o.id }))}
-                          className="p-3 rounded-xl border-2 text-left transition-all"
+                          className={`p-3 rounded-xl border-2 text-left transition-all hover:-translate-y-0.5 hover:shadow-md active:scale-95 ${isSelected ? "animate-scale-in" : ""}`}
                           style={isSelected ? { borderColor: accentColor } : { borderColor: "#E8DFD0" }}
                         >
                           <span
@@ -342,16 +342,16 @@ export default function ProductDetailModal({
                               toggleMulti(g.id, o.id);
                             }
                           }}
-                          className="w-full flex items-center justify-between px-4 py-3 rounded-xl border transition-all hover:border-[#D0D3CB]"
+                          className="w-full flex items-center justify-between px-4 py-3 rounded-xl border transition-all hover:border-[#D0D3CB] hover:bg-[#FAF8F5] active:scale-[0.98]"
                           style={{ borderColor: "#E8DFD0" }}
                         >
                           <span className="flex items-center gap-3">
                             <span
-                              className={`w-5 h-5 border-2 flex items-center justify-center shrink-0 ${g.selection_type === "single" ? "rounded-full" : "rounded"}`}
+                              className={`w-5 h-5 border-2 flex items-center justify-center shrink-0 transition-all ${g.selection_type === "single" ? "rounded-full" : "rounded"} ${isSelected ? "scale-110" : ""}`}
                               style={{ borderColor: isSelected ? accentColor : "#D0D3CB", background: isSelected && g.selection_type === "multiple" ? accentColor : "transparent" }}
                             >
                               {isSelected && g.selection_type === "single" && (
-                                <span className="w-2.5 h-2.5 rounded-full" style={{ background: accentColor }} />
+                                <span className="w-2.5 h-2.5 rounded-full animate-scale-in" style={{ background: accentColor }} />
                               )}
                               {isSelected && g.selection_type === "multiple" && <span className="text-white text-xs">✓</span>}
                             </span>
@@ -369,17 +369,17 @@ export default function ProductDetailModal({
 
           <div className="shrink-0 border-t border-[#E8DFD0] p-4 sm:p-5">
             <div className="flex items-center gap-3">
-              <div className="flex items-center gap-1 rounded-lg bg-[#F3F4F6]">
+              <div className="flex items-center gap-1 rounded-lg bg-[#F3F4F6] animate-fade-in-up stagger-3">
                 <button
                   onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                  className="w-9 h-9 flex items-center justify-center font-bold text-lg text-[#1A1613] rounded-l-lg hover:bg-[#E5E7EB]"
+                  className="w-9 h-9 flex items-center justify-center font-bold text-lg text-[#1A1613] rounded-l-lg hover:bg-[#E5E7EB] transition-transform active:scale-75"
                 >
                   −
                 </button>
-                <span className="w-8 text-center font-semibold text-[#1A1613]">{quantity}</span>
+                <span key={quantity} className="w-8 text-center font-semibold text-[#1A1613] animate-count-bump">{quantity}</span>
                 <button
                   onClick={() => setQuantity((q) => q + 1)}
-                  className="w-9 h-9 flex items-center justify-center font-bold text-lg text-white rounded-r-lg"
+                  className="w-9 h-9 flex items-center justify-center font-bold text-lg text-white rounded-r-lg transition-transform active:scale-75 hover:brightness-110"
                   style={{ background: accentColor }}
                 >
                   +
@@ -396,13 +396,13 @@ export default function ProductDetailModal({
                   unit_price: unitPrice,
                 })}
                 disabled={missingRequired || product.is_out_of_stock}
-                className="flex-1 text-white font-bold py-3 px-5 rounded-lg transition-colors flex items-center justify-between disabled:opacity-40 disabled:cursor-not-allowed"
+                className="flex-1 text-white font-bold py-3 px-5 rounded-lg transition-all flex items-center justify-between disabled:opacity-40 disabled:cursor-not-allowed hover:shadow-lg hover:-translate-y-0.5 active:scale-[0.98] animate-fade-in-up stagger-3 group"
                 style={{ background: accentColor }}
               >
-                <span>Rs. {fmt(unitPrice * quantity)}</span>
+                <span key={quantity} className="animate-count-bump">Rs. {fmt(unitPrice * quantity)}</span>
                 <span className="flex items-center gap-2">
                   {product.is_out_of_stock ? "Out of Stock" : "Add to Cart"}
-                  {!product.is_out_of_stock && <span aria-hidden>→</span>}
+                  {!product.is_out_of_stock && <span aria-hidden className="transition-transform group-hover:translate-x-1">→</span>}
                 </span>
               </button>
             </div>

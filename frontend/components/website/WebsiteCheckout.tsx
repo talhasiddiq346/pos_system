@@ -167,9 +167,9 @@ export default function WebsiteCheckout({
         left={
           <button
             onClick={onBack}
-            className="flex items-center gap-2 text-sm font-semibold text-[#6B6259] hover:text-[#1A1613]"
+            className="flex items-center gap-2 text-sm font-semibold text-[#6B6259] hover:text-[#1A1613] transition-all hover:-translate-x-1 group"
           >
-            ← Back to menu
+            <span className="transition-transform group-hover:-translate-x-0.5">←</span> Back to menu
           </button>
         }
       />
@@ -254,7 +254,7 @@ export default function WebsiteCheckout({
                   <select
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
-                    className="w-full h-11 border border-[#E8DFD0] rounded-xl px-3 text-sm bg-white focus:outline-none focus:border-[var(--wp)]"
+                    className="w-full h-11 border border-[#E8DFD0] rounded-xl px-3 text-sm bg-white focus:outline-none focus:border-[var(--wp)] transition-colors focus:shadow-sm"
                   >
                     <option>Mr.</option>
                     <option>Mrs.</option>
@@ -272,7 +272,7 @@ export default function WebsiteCheckout({
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder="Full Name"
-                    className="w-full h-11 border border-[#E8DFD0] rounded-xl px-3 text-sm bg-white focus:outline-none focus:border-[var(--wp)]"
+                    className="w-full h-11 border border-[#E8DFD0] rounded-xl px-3 text-sm bg-white focus:outline-none focus:border-[var(--wp)] transition-colors focus:shadow-sm"
                     required
                   />
                 </div>
@@ -310,7 +310,7 @@ export default function WebsiteCheckout({
                     value={altPhone}
                     onChange={(e) => setAltPhone(e.target.value)}
                     placeholder="03xx-xxxxxxx"
-                    className="w-full h-11 border border-[#E8DFD0] rounded-xl px-3 text-sm bg-white focus:outline-none focus:border-[var(--wp)]"
+                    className="w-full h-11 border border-[#E8DFD0] rounded-xl px-3 text-sm bg-white focus:outline-none focus:border-[var(--wp)] transition-colors focus:shadow-sm"
                   />
                 </div>
               </div>
@@ -329,7 +329,7 @@ export default function WebsiteCheckout({
                     onChange={(e) => setAddress(e.target.value)}
                     placeholder="House / Street / Area / Landmark"
                     rows={2}
-                    className="w-full border border-[#E8DFD0] rounded-xl px-3 py-2.5 text-sm bg-white focus:outline-none focus:border-[var(--wp)] resize-none"
+                    className="w-full border border-[#E8DFD0] rounded-xl px-3 py-2.5 text-sm bg-white focus:outline-none focus:border-[var(--wp)] transition-colors focus:shadow-sm resize-none"
                   />
                 </div>
               )}
@@ -343,7 +343,7 @@ export default function WebsiteCheckout({
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   placeholder="Any special instructions?"
-                  className="w-full h-11 border border-[#E8DFD0] rounded-xl px-3 text-sm bg-white focus:outline-none focus:border-[var(--wp)]"
+                  className="w-full h-11 border border-[#E8DFD0] rounded-xl px-3 text-sm bg-white focus:outline-none focus:border-[var(--wp)] transition-colors focus:shadow-sm"
                 />
               </div>
 
@@ -357,7 +357,7 @@ export default function WebsiteCheckout({
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="Get your order confirmation by email"
-                  className="w-full h-11 border border-[#E8DFD0] rounded-xl px-3 text-sm bg-white focus:outline-none focus:border-[var(--wp)]"
+                  className="w-full h-11 border border-[#E8DFD0] rounded-xl px-3 text-sm bg-white focus:outline-none focus:border-[var(--wp)] transition-colors focus:shadow-sm"
                 />
               </div>
             </div>
@@ -495,8 +495,8 @@ export default function WebsiteCheckout({
           </div>
 
           {discountAmt > 0 && (
-            <div className="bg-[#E6F2EF] border border-[#C7E2DA] rounded-2xl px-4 py-2.5 flex items-center gap-2">
-              <span className="w-6 h-6 rounded-full bg-[#16A34A] text-white flex items-center justify-center text-xs">%</span>
+            <div className="bg-[#E6F2EF] border border-[#C7E2DA] rounded-2xl px-4 py-2.5 flex items-center gap-2 animate-fade-in-down">
+              <span className="w-6 h-6 rounded-full bg-[#16A34A] text-white flex items-center justify-center text-xs animate-pop-in">%</span>
               <span className="text-sm text-[#16A34A] font-semibold">
                 Yay! You saved Rs. {fmt(discountAmt)}
               </span>
@@ -512,25 +512,25 @@ export default function WebsiteCheckout({
                     value={voucher}
                     onChange={(e) => setVoucher(e.target.value.toUpperCase())}
                     placeholder="Enter Voucher / Promo code"
-                    className="flex-1 h-11 border border-[#E8DFD0] rounded-xl px-3 text-sm bg-white focus:outline-none focus:border-[var(--wp)]"
+                    className="flex-1 h-11 border border-[#E8DFD0] rounded-xl px-3 text-sm bg-white focus:outline-none focus:border-[var(--wp)] transition-colors focus:shadow-sm"
                   />
                   <button
                     onClick={applyVoucher}
                     disabled={!voucher.trim() || applyingVoucher}
-                    className="px-5 h-11 rounded-xl bg-[var(--wp)] text-white text-sm font-semibold hover:bg-[var(--wp)] disabled:opacity-50"
+                    className="px-5 h-11 rounded-xl bg-[var(--wp)] text-white text-sm font-semibold hover:bg-[var(--wp)] disabled:opacity-50 transition-transform hover:scale-105 active:scale-95"
                   >
-                    {applyingVoucher ? "Checking..." : "Apply"}
+                    {applyingVoucher ? <span className="animate-pulse-soft">Checking...</span> : "Apply"}
                   </button>
                 </div>
-                {voucherError && <p className="text-xs text-[#9E3527] mt-2">⚠ {voucherError}</p>}
+                {voucherError && <p className="text-xs text-[#9E3527] mt-2 animate-fade-in-down">⚠ {voucherError}</p>}
               </>
             ) : (
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between animate-scale-in">
                 <div className="flex items-center gap-2">
-                  <span className="w-6 h-6 rounded-full bg-[#16A34A] text-white flex items-center justify-center text-xs">✓</span>
+                  <span className="w-6 h-6 rounded-full bg-[#16A34A] text-white flex items-center justify-center text-xs animate-pop-in">✓</span>
                   <span className="text-sm font-bold text-[#16A34A]">{voucher} applied</span>
                 </div>
-                <button onClick={removeVoucher} className="text-xs text-[#9E3527] font-semibold hover:underline">
+                <button onClick={removeVoucher} className="text-xs text-[#9E3527] font-semibold hover:underline transition-transform hover:scale-105">
                   Remove
                 </button>
               </div>
@@ -541,16 +541,16 @@ export default function WebsiteCheckout({
           <button
             onClick={handleSubmit}
             disabled={submitting || !name || !phone || !!phoneError || (!isPickup && !address)}
-            className="w-full py-4 rounded-full bg-gradient-to-r from-[var(--wp)] to-[var(--wp)] text-white font-bold text-base flex items-center justify-center gap-2 shadow-lg active:scale-[0.98] transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full py-4 rounded-full bg-gradient-to-r from-[var(--wp)] to-[var(--wp)] text-white font-bold text-base flex items-center justify-center gap-2 shadow-lg active:scale-[0.98] hover:shadow-xl hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0"
           >
-            <span>🛒</span>
-            {submitting ? "Placing order..." : "Place Order"}
+            <span className={submitting ? "animate-wiggle" : ""}>🛒</span>
+            {submitting ? <span className="animate-pulse-soft">Placing order...</span> : "Place Order"}
           </button>
 
           {/* Continue link */}
           <button
             onClick={onBack}
-            className="w-full text-center text-sm font-semibold text-[var(--wp)] hover:underline flex items-center justify-center gap-1.5"
+            className="w-full text-center text-sm font-semibold text-[var(--wp)] hover-underline flex items-center justify-center gap-1.5 transition-transform hover:-translate-x-0.5"
           >
             ← continue to add more items
           </button>

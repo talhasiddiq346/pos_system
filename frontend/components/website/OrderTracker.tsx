@@ -106,14 +106,14 @@ export default function OrderTracker({
       <div className="max-w-3xl mx-auto px-3 md:px-6 py-6">
         {/* Search card */}
         {!order && (
-          <div className="text-center mb-6">
-            <div className="text-6xl mb-3">📦</div>
+          <div className="text-center mb-6 animate-fade-in-up">
+            <div className="text-6xl mb-3 animate-float">📦</div>
             <h1 className="text-2xl md:text-3xl font-bold text-[#1A1613]">Track Your Order</h1>
             <p className="text-sm text-[#6B6259] mt-1">Enter your order code to check status</p>
           </div>
         )}
 
-        <div className="bg-white rounded-2xl border border-[#E8DFD0] p-5 shadow-sm">
+        <div className="bg-white rounded-2xl border border-[#E8DFD0] p-5 shadow-sm animate-fade-in-up stagger-1">
           <div className="flex gap-2">
             <input
               value={inputCode}
@@ -122,19 +122,19 @@ export default function OrderTracker({
               onFocus={(e) => (e.currentTarget.style.borderColor = site.primaryColor)}
               onBlur={(e) => (e.currentTarget.style.borderColor = "#E8DFD0")}
               placeholder="e.g. ORD-A7B3C9"
-              className="flex-1 h-12 border-2 border-[#E8DFD0] rounded-xl px-4 text-base font-mono focus:outline-none uppercase"
+              className="flex-1 h-12 border-2 border-[#E8DFD0] rounded-xl px-4 text-base font-mono focus:outline-none uppercase transition-colors"
             />
             <button
               onClick={() => fetchOrder(inputCode)}
               disabled={!inputCode.trim() || loading}
-              className="px-5 h-12 rounded-xl text-white font-semibold disabled:opacity-50 flex items-center gap-2"
+              className="px-5 h-12 rounded-xl text-white font-semibold disabled:opacity-50 flex items-center gap-2 transition-all hover:shadow-md hover:-translate-y-0.5 active:scale-95"
               style={{ background: site.primaryColor }}
             >
-              {loading ? "..." : <><span>🔍</span> Track</>}
+              {loading ? <span className="animate-pulse-soft">...</span> : <><span>🔍</span> Track</>}
             </button>
           </div>
           {error && (
-            <p className="mt-3 text-sm text-[#9E3527] bg-[#FBEAE7] border border-[#F0C9C2] rounded-xl px-3 py-2">
+            <p className="mt-3 text-sm text-[#9E3527] bg-[#FBEAE7] border border-[#F0C9C2] rounded-xl px-3 py-2 animate-fade-in-down">
               ⚠ {error}
             </p>
           )}
@@ -144,7 +144,7 @@ export default function OrderTracker({
         {order && (
           <>
             {/* Status hero */}
-            <div className="mt-6 rounded-3xl p-6 text-white shadow-lg" style={{ background: `linear-gradient(to bottom right, ${site.primaryColor}, ${site.primaryColor}CC)` }}>
+            <div className="mt-6 rounded-3xl p-6 text-white shadow-lg animate-scale-in" style={{ background: `linear-gradient(to bottom right, ${site.primaryColor}, ${site.primaryColor}CC)` }}>
               <div className="flex items-start justify-between mb-4 gap-3">
                 <div className="min-w-0">
                   <p className="text-xs opacity-80 uppercase tracking-wider">Order</p>
@@ -156,7 +156,7 @@ export default function OrderTracker({
               </div>
 
               <div className="bg-white/15 backdrop-blur-sm rounded-2xl p-4 flex items-center gap-4">
-                <div className="text-4xl">
+                <div key={order.status} className="text-4xl animate-pop-in">
                   {order.status === "cancelled"
                     ? "❌"
                     : STATUS_STEPS.find((s) => s.key === order.status)?.icon || "⏳"}
@@ -187,7 +187,7 @@ export default function OrderTracker({
 
             {/* Timeline */}
             {order.status !== "cancelled" && (
-              <div className="mt-4 bg-white rounded-2xl border border-[#E8DFD0] p-5">
+              <div className="mt-4 bg-white rounded-2xl border border-[#E8DFD0] p-5 animate-fade-in-up stagger-1">
                 <h3 className="text-sm font-bold text-[#1A1613] mb-4">Progress</h3>
                 <div className="space-y-4">
                   {STATUS_STEPS.map((step, i) => {
@@ -203,14 +203,14 @@ export default function OrderTracker({
                     }
 
                     return (
-                      <div key={step.key} className="flex gap-3">
+                      <div key={step.key} className="flex gap-3 animate-fade-in-up" style={{ animationDelay: `${i * 0.08}s` }}>
                         <div className="flex flex-col items-center">
                           <div
                             className={`w-10 h-10 rounded-full flex items-center justify-center text-lg transition-all ${
                               isDone
-                                ? "bg-[#16A34A] text-white"
+                                ? "bg-[#16A34A] text-white animate-pop-in"
                                 : isCurrent
-                                ? "text-white scale-110"
+                                ? "text-white scale-110 animate-pulse-soft"
                                 : "bg-[#F5F1EB] text-[#A89F94]"
                             }`}
                             style={isCurrent ? { background: site.primaryColor, boxShadow: `0 0 0 4px ${site.primaryColor}33` } : undefined}
@@ -245,7 +245,7 @@ export default function OrderTracker({
             )}
 
             {/* Delivery/Pickup details */}
-            <div className="mt-4 bg-white rounded-2xl border border-[#E8DFD0] p-5">
+            <div className="mt-4 bg-white rounded-2xl border border-[#E8DFD0] p-5 animate-fade-in-up stagger-2">
               <h3 className="text-sm font-bold text-[#1A1613] mb-3 flex items-center gap-2">
                 {order.order_type === "pickup" ? "🏪 Pickup Details" : "🛵 Delivery Details"}
               </h3>
@@ -278,7 +278,7 @@ export default function OrderTracker({
             </div>
 
             {/* Order items */}
-            <div className="mt-4 bg-white rounded-2xl border border-[#E8DFD0] overflow-hidden">
+            <div className="mt-4 bg-white rounded-2xl border border-[#E8DFD0] overflow-hidden animate-fade-in-up stagger-3">
               <div className="px-5 py-3 border-b border-[#E8DFD0]">
                 <h3 className="text-sm font-bold text-[#1A1613]">🍽️ Order Items</h3>
               </div>
@@ -314,9 +314,9 @@ export default function OrderTracker({
             <button
               onClick={() => fetchOrder(code)}
               disabled={loading}
-              className="w-full mt-4 py-3 rounded-full border-2 border-[#E8DFD0] text-[#6B6259] font-semibold text-sm hover:bg-white transition-colors flex items-center justify-center gap-2"
+              className="w-full mt-4 py-3 rounded-full border-2 border-[#E8DFD0] text-[#6B6259] font-semibold text-sm hover:bg-white hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2 animate-fade-in-up stagger-4"
             >
-              {loading ? "Refreshing..." : "🔄 Refresh status"}
+              {loading ? <span className="animate-pulse-soft">Refreshing...</span> : <>🔄 Refresh status</>}
             </button>
           </>
         )}
