@@ -260,22 +260,22 @@ export default function WebsiteMenu({
 
       {mobileMenuOpen && (
         <div
-          className="fixed inset-0 z-50 bg-black/50 md:hidden"
+          className="fixed inset-0 z-50 bg-black/50 md:hidden animate-fade-in"
           onClick={() => setMobileMenuOpen(false)}
         >
           <div
-            className="absolute left-0 top-0 bottom-0 w-72 bg-white p-5 shadow-2xl"
+            className="absolute left-0 top-0 bottom-0 w-72 bg-white p-5 shadow-2xl animate-slide-in-left"
             onClick={(e) => e.stopPropagation()}
           >
             <button
               onClick={() => setMobileMenuOpen(false)}
-              className="mb-6 text-2xl"
+              className="mb-6 text-2xl transition-transform hover:rotate-90 active:scale-90 inline-block"
             >✕</button>
 
             <div className="space-y-2">
               <button
                 onClick={() => { onBack(); setMobileMenuOpen(false); }}
-                className="w-full text-left px-4 py-3 rounded-xl"
+                className="w-full text-left px-4 py-3 rounded-xl transition-all hover:scale-[1.02] active:scale-[0.98] animate-fade-in-up stagger-1"
                 style={{ background: site.secondaryColor }}
               >
                 <p className="text-[10px] uppercase text-[#6B6259] font-semibold">
@@ -287,7 +287,7 @@ export default function WebsiteMenu({
 
               <button
                 onClick={() => { onTrack(); setMobileMenuOpen(false); }}
-                className="w-full text-left px-4 py-3 rounded-xl hover:bg-[#FAF8F5]"
+                className="w-full text-left px-4 py-3 rounded-xl hover:bg-[#FAF8F5] transition-all hover:translate-x-1 animate-fade-in-up stagger-2"
               >
                 📦 Track my order
               </button>
@@ -295,7 +295,7 @@ export default function WebsiteMenu({
               {branch.phone && (
                 <a
                   href={`tel:${branch.phone}`}
-                  className="block px-4 py-3 rounded-xl hover:bg-[#FAF8F5]"
+                  className="block px-4 py-3 rounded-xl hover:bg-[#FAF8F5] transition-all hover:translate-x-1 animate-fade-in-up stagger-3"
                 >
                   📞 {branch.phone}
                 </a>
@@ -315,10 +315,10 @@ export default function WebsiteMenu({
               return (
                 <div
                   key={p.id}
-                  className={`relative rounded-2xl overflow-hidden bg-[#EDE8E1] ${
+                  className={`relative rounded-2xl overflow-hidden bg-[#EDE8E1] transition-transform duration-300 hover:scale-[1.03] hover:shadow-lg animate-fade-in-up ${
                     i === 0 ? "col-span-2 sm:col-span-1" : ""
                   }`}
-                  style={{ aspectRatio: i === 0 ? "2/1" : "3/4" }}
+                  style={{ aspectRatio: i === 0 ? "2/1" : "3/4", animationDelay: `${i * 0.08}s` }}
                 >
                   {imgSrc ? (
                     <img
@@ -563,12 +563,12 @@ function ProductCardMain({
         )}
       </div>
 
-      <div className="relative w-24 h-24 md:w-28 md:h-28 rounded-xl overflow-hidden bg-[#F5F1EB] flex-shrink-0">
+      <div className="relative w-24 h-24 md:w-28 md:h-28 rounded-xl overflow-hidden bg-[#F5F1EB] flex-shrink-0 group">
         {imgSrc ? (
           <img
             src={imgSrc}
             alt={product.name}
-            className={`w-full h-full object-cover ${outOfStock ? "grayscale" : ""}`}
+            className={`w-full h-full object-cover transition-transform duration-300 ${outOfStock ? "grayscale" : "group-hover:scale-110"}`}
             onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
           />
         ) : (
@@ -577,14 +577,14 @@ function ProductCardMain({
           </div>
         )}
         {hasDiscount && !outOfStock && (
-          <span className="absolute top-1 right-1 bg-[#FBBF24] text-[#1A1613] text-[9px] font-bold px-1.5 py-0.5 rounded">
+          <span className="absolute top-1 right-1 bg-[#FBBF24] text-[#1A1613] text-[9px] font-bold px-1.5 py-0.5 rounded animate-pulse-soft">
             {discPct}% OFF
           </span>
         )}
         {!outOfStock && (
           <span
             onClick={(e) => { e.stopPropagation(); onAdd(product); }}
-            className="absolute bottom-1 right-1 w-8 h-8 rounded-full text-white flex items-center justify-center shadow-lg font-bold text-lg active:scale-90 transition-transform"
+            className="absolute bottom-1 right-1 w-8 h-8 rounded-full text-white flex items-center justify-center shadow-lg font-bold text-lg active:scale-90 hover:scale-125 transition-transform"
             style={{ background: site.primaryColor }}
           >
             +
@@ -640,14 +640,14 @@ function ProductCardPopular({
           </span>
         ) : (
           <span
-            className="absolute top-2 left-2 text-white text-[10px] font-bold px-2 py-1 rounded-full flex items-center gap-1 shadow-sm"
+            className="absolute top-2 left-2 text-white text-[10px] font-bold px-2 py-1 rounded-full flex items-center gap-1 shadow-sm animate-fade-in-down"
             style={{ background: site.primaryColor }}
           >
-            🔥 Popular
+            <span className="animate-wiggle inline-block">🔥</span> Popular
           </span>
         )}
         {hasDiscount && !outOfStock && (
-          <span className="absolute top-2 right-2 bg-[#FBBF24] text-[#1A1613] text-[9px] font-bold px-2 py-1 rounded-full shadow-sm">
+          <span className="absolute top-2 right-2 bg-[#FBBF24] text-[#1A1613] text-[9px] font-bold px-2 py-1 rounded-full shadow-sm animate-pulse-soft">
             SALE
           </span>
         )}

@@ -108,47 +108,47 @@ export default function BranchSelector({
 
           <div className="px-6 py-6 pt-4">
             {/* Brand name */}
-            <div className="text-center mb-6 -mt-2">
+            <div className="text-center mb-6 -mt-2 animate-fade-in-up">
               <h1 className="text-2xl font-bold text-[#1A1613] tracking-tight">{site.brandName}</h1>
               <p className="text-xs text-[#6B6259] mt-0.5">Fresh from the oven</p>
             </div>
 
-            <h2 className="text-base font-bold text-[#1A1613] text-center mb-4">
+            <h2 className="text-base font-bold text-[#1A1613] text-center mb-4 animate-fade-in-up stagger-1">
               Select Your Order Type
             </h2>
 
             {/* Delivery / Pickup toggle */}
-            <div className="bg-[#F5F1EB] rounded-full p-1 flex mb-6">
+            <div className="bg-[#F5F1EB] rounded-full p-1 flex mb-6 animate-fade-in-up stagger-2">
               <button
                 onClick={() => setOrderType("delivery")}
-                className="flex-1 py-2.5 rounded-full text-sm font-semibold transition-all"
+                className="flex-1 py-2.5 rounded-full text-sm font-semibold transition-all active:scale-95"
                 style={orderType === "delivery" ? { background: site.primaryColor, color: "white" } : { color: "#6B6259" }}
               >
-                🛵 Delivery
+                <span className={orderType === "delivery" ? "inline-block animate-wiggle" : "inline-block"}>🛵</span> Delivery
               </button>
               <button
                 onClick={() => setOrderType("pickup")}
-                className="flex-1 py-2.5 rounded-full text-sm font-semibold transition-all"
+                className="flex-1 py-2.5 rounded-full text-sm font-semibold transition-all active:scale-95"
                 style={orderType === "pickup" ? { background: site.primaryColor, color: "white" } : { color: "#6B6259" }}
               >
-                🏪 Pick-Up
+                <span className={orderType === "pickup" ? "inline-block animate-wiggle" : "inline-block"}>🏪</span> Pick-Up
               </button>
             </div>
 
             {/* Location instruction */}
-            <p className="text-xs text-[#6B6259] text-center mb-3">Please select your location</p>
+            <p className="text-xs text-[#6B6259] text-center mb-3 animate-fade-in-up stagger-2">Please select your location</p>
 
             {/* Use current location button (visual only for now) */}
             <button
-              className="w-full mb-4 py-2.5 rounded-full border-2 text-sm font-semibold transition-colors flex items-center justify-center gap-2"
+              className="w-full mb-4 py-2.5 rounded-full border-2 text-sm font-semibold transition-all flex items-center justify-center gap-2 hover:scale-[1.02] hover:shadow-sm active:scale-95 animate-fade-in-up stagger-3"
               style={{ borderColor: site.primaryColor, color: site.primaryColor, background: `${site.secondaryColor}55` }}
               onClick={() => alert("Geolocation feature coming soon!")}
             >
-              📍 Use Current Location
+              <span className="animate-pulse-soft">📍</span> Use Current Location
             </button>
 
             {/* City select */}
-            <label className="block text-xs font-semibold text-[#1A1613] mb-1.5">
+            <label className="block text-xs font-semibold text-[#1A1613] mb-1.5 animate-fade-in-up stagger-4">
               Please Select City
             </label>
             <select
@@ -156,7 +156,7 @@ export default function BranchSelector({
               onChange={(e) => setCity(e.target.value)}
               onFocus={(e) => (e.currentTarget.style.borderColor = site.primaryColor)}
               onBlur={(e) => (e.currentTarget.style.borderColor = "#E8DFD0")}
-              className="w-full mb-4 px-4 py-3 border border-[#E8DFD0] rounded-xl text-sm bg-white focus:outline-none"
+              className="w-full mb-4 px-4 py-3 border border-[#E8DFD0] rounded-xl text-sm bg-white focus:outline-none transition-all focus:shadow-md animate-fade-in-up stagger-4"
             >
               {availableCities.map((c) => (
                 <option key={c} value={c}>{c}</option>
@@ -164,7 +164,7 @@ export default function BranchSelector({
             </select>
 
             {/* Branch/Location select */}
-            <label className="block text-xs font-semibold text-[#1A1613] mb-1.5">
+            <label className="block text-xs font-semibold text-[#1A1613] mb-1.5 animate-fade-in-up stagger-5">
               {orderType === "pickup" ? "Please select pickup branch" : "Please select your location"}
             </label>
             <select
@@ -172,7 +172,7 @@ export default function BranchSelector({
               onChange={(e) => setSelectedBranchId(Number(e.target.value))}
               onFocus={(e) => (e.currentTarget.style.borderColor = site.primaryColor)}
               onBlur={(e) => (e.currentTarget.style.borderColor = "#E8DFD0")}
-              className="w-full mb-6 px-4 py-3 border border-[#E8DFD0] rounded-xl text-sm bg-white focus:outline-none"
+              className="w-full mb-6 px-4 py-3 border border-[#E8DFD0] rounded-xl text-sm bg-white focus:outline-none transition-all focus:shadow-md animate-fade-in-up stagger-5"
             >
               <option value="">
                 {loading ? "Loading branches..." : "Select branch"}

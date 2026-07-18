@@ -180,13 +180,13 @@ export default function WebsiteCheckout({
             ═══════════════════════════════════════════════════ */}
         <div className="lg:col-span-2 space-y-4">
           {/* Order type info card */}
-          <div className="bg-white rounded-2xl border border-[#E8DFD0] p-5">
+          <div className="bg-white rounded-2xl border border-[#E8DFD0] p-5 animate-fade-in-up">
             <p className="text-sm text-[#6B6259] flex items-center gap-2 flex-wrap">
               This is a{" "}
               <span className="font-bold text-[#1A1613]">
                 {isPickup ? "TAKEAWAY ORDER" : "DELIVERY ORDER"}
               </span>
-              <span className="text-lg">{isPickup ? "🥡" : "🛵"}</span>
+              <span className="text-lg animate-float inline-block">{isPickup ? "🥡" : "🛵"}</span>
             </p>
 
             {isPickup && (
@@ -205,7 +205,7 @@ export default function WebsiteCheckout({
                   href={`https://maps.google.com/?q=${encodeURIComponent(branch.address)}`}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex items-center gap-1 mt-2 text-sm text-[var(--wp)] font-semibold hover:underline"
+                  className="inline-flex items-center gap-1 mt-2 text-sm text-[var(--wp)] font-semibold hover-underline transition-transform hover:scale-105"
                 >
                   View Location 📍
                 </a>
@@ -222,9 +222,9 @@ export default function WebsiteCheckout({
           </div>
 
           {/* Info form card */}
-          <div className="bg-white rounded-2xl border border-[#E8DFD0] overflow-hidden">
+          <div className="bg-white rounded-2xl border border-[#E8DFD0] overflow-hidden animate-fade-in-up stagger-1">
             <div className="bg-[#FFF5F1] px-5 py-4 flex items-center gap-3 border-b border-[#FFD5C7]">
-              <div className="w-10 h-10 rounded-full bg-[var(--wp)] flex items-center justify-center shrink-0">
+              <div className="w-10 h-10 rounded-full bg-[var(--wp)] flex items-center justify-center shrink-0 animate-pulse-soft">
                 <span className="text-lg">📝</span>
               </div>
               <div className="flex-1 min-w-0">
@@ -369,18 +369,18 @@ export default function WebsiteCheckout({
                 <button
                   type="button"
                   onClick={() => setPayment("cod")}
-                  className={`relative p-4 rounded-xl border-2 transition-all ${
+                  className={`relative p-4 rounded-xl border-2 transition-all hover:-translate-y-0.5 hover:shadow-md active:scale-95 ${
                     payment === "cod"
-                      ? "border-[var(--wp)] bg-[#FFF5F1]"
+                      ? "border-[var(--wp)] bg-[#FFF5F1] scale-[1.02]"
                       : "border-[#E8DFD0] hover:border-[var(--ws)]"
                   }`}
                 >
                   {payment === "cod" && (
-                    <span className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-[var(--wp)] text-white flex items-center justify-center text-xs">
+                    <span className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-[var(--wp)] text-white flex items-center justify-center text-xs animate-pop-in">
                       ✓
                     </span>
                   )}
-                  <div className="text-3xl mb-2">💵</div>
+                  <div className="text-3xl mb-2 transition-transform hover:scale-110">💵</div>
                   <p className="text-sm font-bold text-[#1A1613]">Cash on Delivery</p>
                   <p className="text-xs text-[#6B6259] mt-0.5">Pay when you receive</p>
                 </button>
@@ -388,24 +388,24 @@ export default function WebsiteCheckout({
                 <button
                   type="button"
                   onClick={() => setPayment("online")}
-                  className={`relative p-4 rounded-xl border-2 transition-all ${
+                  className={`relative p-4 rounded-xl border-2 transition-all hover:-translate-y-0.5 hover:shadow-md active:scale-95 ${
                     payment === "online"
-                      ? "border-[var(--wp)] bg-[#FFF5F1]"
+                      ? "border-[var(--wp)] bg-[#FFF5F1] scale-[1.02]"
                       : "border-[#E8DFD0] hover:border-[var(--ws)]"
                   }`}
                 >
                   {payment === "online" && (
-                    <span className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-[var(--wp)] text-white flex items-center justify-center text-xs">
+                    <span className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-[var(--wp)] text-white flex items-center justify-center text-xs animate-pop-in">
                       ✓
                     </span>
                   )}
-                  <div className="flex gap-1 mb-2 text-3xl">💳</div>
+                  <div className="flex gap-1 mb-2 text-3xl transition-transform hover:scale-110">💳</div>
                   <p className="text-sm font-bold text-[#1A1613]">Online Payment</p>
                   <p className="text-xs text-[#6B6259] mt-0.5">Card / Wallet</p>
                 </button>
               </div>
               {payment === "online" && (
-                <p className="text-xs text-[#6B6259] mt-3 bg-[#FFF8ED] border border-[#F0D99A] rounded-lg px-3 py-2">
+                <p className="text-xs text-[#6B6259] mt-3 bg-[#FFF8ED] border border-[#F0D99A] rounded-lg px-3 py-2 animate-fade-in-down">
                   💡 Online payment gateway will open after placing order (coming soon)
                 </p>
               )}
@@ -416,16 +416,16 @@ export default function WebsiteCheckout({
         {/* ═══════════════════════════════════════════════════
             RIGHT — Order summary (sticky)
             ═══════════════════════════════════════════════════ */}
-        <div className="lg:sticky lg:top-24 lg:self-start space-y-4">
+        <div className="lg:sticky lg:top-24 lg:self-start space-y-4 animate-fade-in-up stagger-1">
           {/* Items summary */}
           <div className="bg-white rounded-2xl border border-[#E8DFD0] p-4">
             <p className="text-xs font-semibold text-[#6B6259] uppercase tracking-wider mb-3">
               Your order ({cart.length} item{cart.length > 1 ? "s" : ""})
             </p>
             <div className="space-y-3">
-              {cart.map((item) => (
-                <div key={item.key} className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-lg bg-[#F5F1EB] overflow-hidden flex-shrink-0">
+              {cart.map((item, i) => (
+                <div key={item.key} className="flex items-center gap-3 animate-fade-in-up" style={{ animationDelay: `${Math.min(i * 0.05, 0.3)}s` }}>
+                  <div className="w-12 h-12 rounded-lg bg-[#F5F1EB] overflow-hidden flex-shrink-0 transition-transform hover:scale-105">
                     {item.image_url ? (
                       <img src={item.image_url} alt="" className="w-full h-full object-cover" />
                     ) : (

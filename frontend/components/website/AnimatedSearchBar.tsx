@@ -51,10 +51,10 @@ export default function AnimatedSearchBar({
   }
 
   return (
-    <div className="flex items-center justify-center p-4 mt-10">
+    <div className="flex items-center justify-center p-4 mt-10 animate-fade-in-up">
       <div
-        className="flex items-center border-2 rounded-full px-6 py-3 w-full max-w-2xl bg-white shadow-lg hover:shadow-xl transition-shadow"
-        style={{ borderColor: accentColor }}
+        className={`flex items-center border-2 rounded-full px-6 py-3 w-full max-w-2xl bg-white shadow-lg hover:shadow-xl transition-all duration-300 ${isFocused ? "scale-[1.02]" : ""}`}
+        style={{ borderColor: accentColor, boxShadow: isFocused ? `0 0 0 4px ${accentColor}22` : undefined }}
       >
         {!value && (
           <span className="whitespace-nowrap font-medium" style={{ color: accentColor }}>
@@ -69,14 +69,14 @@ export default function AnimatedSearchBar({
           onFocus={() => setIsFocused(true)}
           onBlur={handleBlur}
           placeholder={!isFocused && !value ? displayText : ""}
-          className="flex-1 outline-none bg-transparent font-medium"
+          className="flex-1 outline-none bg-transparent font-medium transition-all"
           style={{ color: accentColor }}
         />
 
         {value ? (
           <button
             onClick={() => onChange("")}
-            className="rounded-full p-2 text-white transition-colors ml-2 flex-shrink-0"
+            className="rounded-full p-2 text-white transition-all ml-2 flex-shrink-0 hover:scale-110 active:scale-90 hover:rotate-90"
             style={{ background: accentColor }}
             aria-label="Clear search"
           >
@@ -84,11 +84,11 @@ export default function AnimatedSearchBar({
           </button>
         ) : (
           <button
-            className="rounded-full p-2 text-white transition-colors ml-2 flex-shrink-0"
+            className="rounded-full p-2 text-white transition-all ml-2 flex-shrink-0 hover:scale-110 active:scale-90 group"
             style={{ background: accentColor }}
             aria-label="Search"
           >
-            <ArrowRight size={18} />
+            <ArrowRight size={18} className="transition-transform group-hover:translate-x-0.5" />
           </button>
         )}
       </div>
