@@ -54,7 +54,7 @@ export default function OrderSuccess({
         {/* Message card */}
         <div className="bg-white rounded-3xl shadow-xl p-6 md:p-8 text-center border border-[#E8DFD0] animate-fade-in-up stagger-1">
           <h1 className="text-2xl md:text-3xl font-bold text-[#1A1613] mb-2">
-            Order Placed! <span className="inline-block animate-wiggle">🎉</span>
+            Order Placed! <span className="inline-block animate-shake-loop">🎉</span>
           </h1>
           <p className="text-sm text-[#6B6259] leading-relaxed">
             Thank you for ordering from {site.brandName}.<br />

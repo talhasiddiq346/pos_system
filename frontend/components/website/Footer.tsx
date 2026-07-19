@@ -72,8 +72,8 @@ export default function Footer({ onTrack }: { onTrack?: () => void }) {
               <span
                 key={s.label}
                 title={s.label}
-                className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold cursor-default transition-all hover:scale-125 hover:-translate-y-1 hover:shadow-md animate-fade-in-up"
-                style={{ background: site.secondaryColor, color: site.primaryColor, animationDelay: `${i * 0.08}s` }}
+                className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold cursor-default transition-all hover:scale-125 hover:-translate-y-1 hover:shadow-md animate-float"
+                style={{ background: site.secondaryColor, color: site.primaryColor, animationDelay: `${i * 0.3}s`, animationDuration: `${2.5 + i * 0.4}s` }}
               >
                 {s.icon}
               </span>

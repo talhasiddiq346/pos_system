@@ -247,7 +247,7 @@ export default function WebsiteMenu({
               {cartCount > 0 && (
                 <span
                   key={cartCount}
-                  className="absolute -top-0.5 -right-0.5 min-w-5 h-5 px-1 rounded-full text-white text-[10px] font-bold flex items-center justify-center animate-count-bump"
+                  className="absolute -top-0.5 -right-0.5 min-w-5 h-5 px-1 rounded-full text-white text-[10px] font-bold flex items-center justify-center animate-pulse-strong"
                   style={{ background: site.primaryColor }}
                 >
                   {cartCount}
@@ -368,7 +368,7 @@ export default function WebsiteMenu({
         <div className="max-w-3xl mx-auto px-3 md:px-6 mt-3 animate-fade-in-down">
           <div className="bg-white rounded-2xl px-4 py-3 flex items-center gap-3 shadow-sm border border-[#E8DFD0]">
             <span
-              className="w-8 h-8 rounded-full text-white flex items-center justify-center text-sm font-bold shrink-0 animate-pulse-soft"
+              className="w-8 h-8 rounded-full text-white flex items-center justify-center text-sm font-bold shrink-0 animate-pulse-strong"
               style={{ background: site.primaryColor }}
             >
               %
@@ -389,7 +389,7 @@ export default function WebsiteMenu({
         <div className="max-w-7xl mx-auto px-3 md:px-6 mt-8">
           <div className="mb-4 animate-fade-in-up">
             <h2 className="text-xl md:text-2xl font-bold text-[#1A1613] flex items-center gap-2">
-              <span className="animate-wiggle inline-block">🔥</span> Popular Items
+              <span className="animate-shake-loop inline-block">🔥</span> Popular Items
             </h2>
             <p className="text-xs md:text-sm text-[#6B6259] mt-0.5">Most ordered right now</p>
           </div>
@@ -408,7 +408,7 @@ export default function WebsiteMenu({
         {loading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
             {[...Array(6)].map((_, i) => (
-              <div key={i} className="h-28 rounded-xl animate-shimmer-bg animate-fade-in" style={{ animationDelay: `${i * 0.05}s` }} />
+              <div key={i} className="h-28 rounded-xl animate-shimmer-bg" style={{ animationDelay: `${i * 0.05}s` }} />
             ))}
           </div>
         ) : categoryList.length === 0 ? (
@@ -492,14 +492,14 @@ export default function WebsiteMenu({
             className="w-full max-w-md mx-auto text-white px-5 py-3.5 rounded-full shadow-2xl flex items-center gap-3 font-semibold active:scale-95 hover:-translate-y-0.5 hover:shadow-[0_12px_30px_-8px_rgba(0,0,0,0.4)] transition-all"
             style={{ background: site.primaryColor }}
           >
-            <span className="relative shrink-0">
+            <span className="relative shrink-0 animate-bounce-loop">
               <ShoppingCart size={20} />
               <span key={cartCount} className="absolute -top-2 -right-2 w-4 h-4 rounded-full bg-white text-[10px] font-bold flex items-center justify-center animate-count-bump" style={{ color: site.primaryColor }}>
                 {cartCount}
               </span>
             </span>
             <span>View Cart</span>
-            <span className="font-bold ml-auto">Rs. {fmt(total)}</span>
+            <span className="font-bold ml-auto animate-pulse-soft">Rs. {fmt(total)}</span>
           </button>
         </div>
       )}
@@ -577,7 +577,7 @@ function ProductCardMain({
           </div>
         )}
         {hasDiscount && !outOfStock && (
-          <span className="absolute top-1 right-1 bg-[#FBBF24] text-[#1A1613] text-[9px] font-bold px-1.5 py-0.5 rounded animate-pulse-soft">
+          <span className="absolute top-1 right-1 bg-[#FBBF24] text-[#1A1613] text-[9px] font-bold px-1.5 py-0.5 rounded animate-pulse-strong">
             {discPct}% OFF
           </span>
         )}
@@ -643,11 +643,11 @@ function ProductCardPopular({
             className="absolute top-2 left-2 text-white text-[10px] font-bold px-2 py-1 rounded-full flex items-center gap-1 shadow-sm animate-fade-in-down"
             style={{ background: site.primaryColor }}
           >
-            <span className="animate-wiggle inline-block">🔥</span> Popular
+            <span className="animate-shake-loop inline-block">🔥</span> Popular
           </span>
         )}
         {hasDiscount && !outOfStock && (
-          <span className="absolute top-2 right-2 bg-[#FBBF24] text-[#1A1613] text-[9px] font-bold px-2 py-1 rounded-full shadow-sm animate-pulse-soft">
+          <span className="absolute top-2 right-2 bg-[#FBBF24] text-[#1A1613] text-[9px] font-bold px-2 py-1 rounded-full shadow-sm animate-pulse-strong">
             SALE
           </span>
         )}
@@ -699,7 +699,7 @@ function CartSidebar({
       >
         <div className="text-white px-5 py-4 flex items-center justify-between sticky top-0 z-10" style={{ background: site.primaryColor }}>
           <div className="flex items-center gap-2">
-            <span className="text-xl animate-wiggle inline-block">🛒</span>
+            <span className="text-xl animate-shake-loop inline-block">🛒</span>
             <h3 className="font-bold text-lg">Your Cart</h3>
           </div>
           <button
@@ -848,10 +848,10 @@ function CartSidebar({
           <div className="border-t border-[#E8DFD0] p-4 sticky bottom-0 bg-white">
             <button
               onClick={onCheckout}
-              className="w-full py-3.5 rounded-full text-white font-bold text-base flex items-center justify-center gap-2 shadow-lg active:scale-[0.98] hover:shadow-xl hover:-translate-y-0.5 transition-all group"
-              style={{ background: site.primaryColor }}
+              className="w-full py-3.5 rounded-full text-white font-bold text-base flex items-center justify-center gap-2 shadow-lg active:scale-[0.98] hover:shadow-xl hover:-translate-y-0.5 transition-all group animate-gradient"
+              style={{ backgroundImage: `linear-gradient(90deg, ${site.primaryColor}, ${site.secondaryColor}, ${site.primaryColor})`, backgroundSize: "200% 200%" }}
             >
-              Checkout <span className="transition-transform group-hover:translate-x-1">→</span>
+              Checkout <span className="animate-bounce-loop inline-block">→</span>
             </button>
             <p className="text-center text-xs text-[#6B6259] mt-3">
               Your order will be ready for{" "}

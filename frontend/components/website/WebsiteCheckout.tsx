@@ -541,9 +541,9 @@ export default function WebsiteCheckout({
           <button
             onClick={handleSubmit}
             disabled={submitting || !name || !phone || !!phoneError || (!isPickup && !address)}
-            className="w-full py-4 rounded-full bg-gradient-to-r from-[var(--wp)] to-[var(--wp)] text-white font-bold text-base flex items-center justify-center gap-2 shadow-lg active:scale-[0.98] hover:shadow-xl hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0"
+            className="w-full py-4 rounded-full bg-gradient-to-r from-[var(--wp)] via-[var(--ws)] to-[var(--wp)] animate-gradient text-white font-bold text-base flex items-center justify-center gap-2 shadow-lg active:scale-[0.98] hover:shadow-xl hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0"
           >
-            <span className={submitting ? "animate-wiggle" : ""}>🛒</span>
+            <span className={submitting ? "animate-shake-loop" : "animate-bounce-loop inline-block"}>🛒</span>
             {submitting ? <span className="animate-pulse-soft">Placing order...</span> : "Place Order"}
           </button>
 

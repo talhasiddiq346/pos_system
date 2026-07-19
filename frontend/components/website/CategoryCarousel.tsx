@@ -26,7 +26,7 @@ export default function CategoryCarousel({
             <button
               key={cat.name}
               onClick={() => onSelect(cat.name)}
-              className="shrink-0 px-4 py-2 rounded-full text-xs sm:text-sm font-bold uppercase tracking-wide transition-all hover:opacity-75 hover:scale-105 active:scale-95 cursor-pointer animate-fade-in-up"
+              className={`shrink-0 px-4 py-2 rounded-full text-xs sm:text-sm font-bold uppercase tracking-wide transition-all hover:opacity-75 hover:scale-110 active:scale-90 cursor-pointer animate-fade-in-up ${isActive ? "scale-105 shadow-lg" : ""}`}
               style={{
                 ...(isActive
                   ? { background: accentColor, color: "#ffffff" }

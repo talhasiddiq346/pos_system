@@ -402,7 +402,7 @@ export default function ProductDetailModal({
                 <span key={quantity} className="animate-count-bump">Rs. {fmt(unitPrice * quantity)}</span>
                 <span className="flex items-center gap-2">
                   {product.is_out_of_stock ? "Out of Stock" : "Add to Cart"}
-                  {!product.is_out_of_stock && <span aria-hidden className="transition-transform group-hover:translate-x-1">→</span>}
+                  {!product.is_out_of_stock && <span aria-hidden className="animate-bounce-loop inline-block">→</span>}
                 </span>
               </button>
             </div>
