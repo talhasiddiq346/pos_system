@@ -19,22 +19,36 @@ export default function CategoryCarousel({
 
   return (
     <div className="max-w-7xl mx-auto px-3 md:px-6 py-4 sm:py-6">
-      <div className="flex items-center gap-2.5 overflow-x-auto no-scrollbar pb-1">
+      <div className="flex items-center gap-3 overflow-x-auto no-scrollbar pb-1">
         {categories.map((cat, i) => {
           const isActive = activeCategory === cat.name;
           return (
             <button
               key={cat.name}
               onClick={() => onSelect(cat.name)}
-              className={`shrink-0 px-4 py-2 rounded-full text-xs sm:text-sm font-bold uppercase tracking-wide transition-all hover:opacity-75 hover:scale-110 active:scale-90 cursor-pointer animate-fade-in-up ${isActive ? "scale-105 shadow-lg" : ""}`}
-              style={{
-                ...(isActive
-                  ? { background: accentColor, color: "#ffffff" }
-                  : { background: accentTint, color: accentColor }),
-                animationDelay: `${Math.min(i * 0.04, 0.4)}s`,
-              }}
+              className={`shrink-0 flex flex-col items-center gap-1.5 transition-all hover:scale-110 active:scale-90 cursor-pointer animate-fade-in-up ${isActive ? "scale-105" : ""}`}
+              style={{ animationDelay: `${Math.min(i * 0.05, 0.4)}s` }}
             >
-              {cat.name}
+              <span
+                className="w-14 h-14 sm:w-16 sm:h-16 rounded-full overflow-hidden flex items-center justify-center shadow-md transition-all"
+                style={{
+                  border: `2.5px solid ${isActive ? accentColor : accentTint}`,
+                  boxShadow: isActive ? `0 0 0 3px ${accentColor}33` : undefined,
+                  background: accentTint,
+                }}
+              >
+                {cat.image_url ? (
+                  <img src={cat.image_url} alt={cat.name} className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-xl">🍽️</span>
+                )}
+              </span>
+              <span
+                className="text-[10px] sm:text-xs font-bold uppercase tracking-wide whitespace-nowrap px-1"
+                style={{ color: isActive ? accentColor : "#6B6259" }}
+              >
+                {cat.name}
+              </span>
             </button>
           );
         })}
