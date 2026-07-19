@@ -449,6 +449,70 @@ router.delete("/:id", requireAuth, requireRole("super_admin", "branch_admin"), a
 });
 
 // ═══════════════════════════════════════════════════
+// COPY product (+ variants + addon groups/options) to another branch
+// ═══════════════════════════════════════════════════
+router.post("/:id/copy-to-branch", requireAuth, requireRole("super_admin"), async (req, res) => {
+  const { id } = req.params;
+  const { branch_id } = req.body;
+  if (!branch_id) return res.status(400).json({ error: "Target branch is required" });
+
+  const client = await pool.connect();
+  try {
+    const productRes = await client.query("SELECT * FROM products WHERE id = $1", [id]);
+    if (productRes.rows.length === 0) return res.status(404).json({ error: "Product not found" });
+    const product = productRes.rows[0];
+
+    if (Number(branch_id) === product.branch_id) {
+      return res.status(400).json({ error: "Product already belongs to this branch" });
+    }
+
+    const branchRes = await client.query("SELECT id FROM branches WHERE id = $1", [branch_id]);
+    if (branchRes.rows.length === 0) return res.status(404).json({ error: "Target branch not found" });
+
+    await client.query("BEGIN");
+
+    const inserted = await client.query(
+      `INSERT INTO products (branch_id, name, price, discounted_price, category, description, image_url, image_public_id, is_available)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,true) RETURNING *`,
+      [branch_id, product.name, product.price, product.discounted_price, product.category, product.description, product.image_url, product.image_public_id]
+    );
+    const newProduct = inserted.rows[0];
+
+    const variants = await client.query("SELECT * FROM product_variants WHERE product_id = $1", [id]);
+    for (const v of variants.rows) {
+      await client.query(
+        `INSERT INTO product_variants (product_id, name, price, is_available) VALUES ($1,$2,$3,$4)`,
+        [newProduct.id, v.name, v.price, v.is_available]
+      );
+    }
+
+    const groups = await client.query("SELECT * FROM addon_groups WHERE product_id = $1", [id]);
+    for (const g of groups.rows) {
+      const newGroup = await client.query(
+        `INSERT INTO addon_groups (product_id, title, selection_type, required, sort_order) VALUES ($1,$2,$3,$4,$5) RETURNING id`,
+        [newProduct.id, g.title, g.selection_type, g.required, g.sort_order]
+      );
+      const options = await client.query("SELECT * FROM addon_options WHERE group_id = $1", [g.id]);
+      for (const o of options.rows) {
+        await client.query(
+          `INSERT INTO addon_options (group_id, name, price, is_available, sort_order) VALUES ($1,$2,$3,$4,$5)`,
+          [newGroup.rows[0].id, o.name, o.price, o.is_available, o.sort_order]
+        );
+      }
+    }
+
+    await client.query("COMMIT");
+    res.status(201).json(newProduct);
+  } catch (err) {
+    await client.query("ROLLBACK");
+    console.error("Copy product to branch failed:", err.message);
+    res.status(500).json({ error: "Failed to copy product" });
+  } finally {
+    client.release();
+  }
+});
+
+// ═══════════════════════════════════════════════════
 // ⭐ IMAGE UPLOAD — now goes to Cloudinary
 // ═══════════════════════════════════════════════════
 router.post(

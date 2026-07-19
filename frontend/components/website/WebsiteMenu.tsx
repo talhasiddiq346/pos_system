@@ -52,13 +52,8 @@ type CartItem = {
 };
 
 const CAT_EMOJI: Record<string, string> = {
-  "New Arrivals": "✨", "Deals": "🎁", "Kids Deal": "🧒",
-  "Starters": "🍟", "Soups": "🍲", "Chinese": "🥡",
-  "Fast Food": "🍔", "B.B.Q": "🍢", "BBQ": "🍢",
-  "Rice Platter": "🍛", "Live Karahi": "🥘", "Sea Food": "🦐",
-  "Pizza": "🍕", "Burgers": "🍔", "Pasta": "🍝",
-  "Wraps": "🌯", "Desserts": "🍰", "Drinks": "🥤",
-  "Biryani": "🍚", "Karahi": "🥘", "Main Course": "🍛",
+  "Lassi": "🥤", "Milkshakes": "🥛", "Ice Cream Shakes": "🍨",
+  "Ice Cream": "🍦", "Milk & Yogurt": "🧈", "Eggs": "🥚",
   "Other": "🍽️",
 };
 

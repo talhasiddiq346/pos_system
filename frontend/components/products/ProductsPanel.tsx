@@ -115,6 +115,8 @@ export default function ProductsPanel({ user }: { user: User }) {
                 showBranch={isSuperAdmin && !branchFilter}
                 branchName={branchName(p.branch_id)}
                 onRefresh={load}
+                isSuperAdmin={isSuperAdmin}
+                branches={branches}
               />
             ))}
           </ul>

@@ -26,18 +26,26 @@ function nextTempId() {
   return tempIdCounter--;
 }
 
+type Branch = { id: number; name: string };
+
 export default function ProductCard({
   product: p,
   showBranch,
   branchName,
   onRefresh,
+  isSuperAdmin,
+  branches,
 }: {
   product: Product;
   showBranch: boolean;
   branchName: string;
   onRefresh: () => void;
+  isSuperAdmin?: boolean;
+  branches?: Branch[];
 }) {
   const [expanded, setExpanded] = useState(false);
+  const [showCopyMenu, setShowCopyMenu] = useState(false);
+  const [copyingToBranchId, setCopyingToBranchId] = useState<number | null>(null);
   const [editing, setEditing] = useState(false);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
@@ -226,6 +234,20 @@ export default function ProductCard({
     catch (err) { setError(errMsg(err)); }
   }
 
+  async function handleCopyToBranch(branchId: number) {
+    setCopyingToBranchId(branchId);
+    setError("");
+    try {
+      await api.post(`/products/${p.id}/copy-to-branch`, { branch_id: branchId });
+      setShowCopyMenu(false);
+      onRefresh();
+    } catch (err) {
+      setError(errMsg(err));
+    } finally {
+      setCopyingToBranchId(null);
+    }
+  }
+
   async function handleReplaceImage(file: File) {
     const formData = new FormData();
     formData.append("image", file);
@@ -296,6 +318,30 @@ export default function ProductCard({
               >
                 {p.is_out_of_stock ? "Out of Stock" : "In Stock"}
               </button>
+              {isSuperAdmin && branches && branches.filter((b) => b.id !== p.branch_id).length > 0 && (
+                <div className="relative">
+                  <button
+                    onClick={() => setShowCopyMenu((v) => !v)}
+                    className="text-xs px-2.5 py-1 rounded-md border border-[#C9CCC5] font-medium hover:bg-[#F5F6F4]"
+                  >
+                    Copy to...
+                  </button>
+                  {showCopyMenu && (
+                    <div className="absolute right-0 top-8 z-10 bg-white border border-[#D0D3CB] rounded-md shadow-lg py-1 w-44">
+                      {branches.filter((b) => b.id !== p.branch_id).map((b) => (
+                        <button
+                          key={b.id}
+                          onClick={() => handleCopyToBranch(b.id)}
+                          disabled={copyingToBranchId !== null}
+                          className="w-full text-left text-xs px-3 py-1.5 hover:bg-[#F5F6F4] disabled:opacity-50"
+                        >
+                          {copyingToBranchId === b.id ? "Copying..." : b.name}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
               <button onClick={startEditing} className="text-xs px-2.5 py-1 rounded-md border border-[#C9CCC5] font-medium hover:bg-[#F5F6F4]">Edit</button>
               <button onClick={handleDelete} className="text-xs px-2.5 py-1 rounded-md border border-[#F0C9C2] text-[#9E3527] font-medium hover:bg-[#FBEAE7]">Remove</button>
             </div>

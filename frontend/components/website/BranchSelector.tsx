@@ -33,9 +33,12 @@ export default function BranchSelector({
   useEffect(() => {
     axios.get(`${API}/public/branches`).then((r) => {
       setBranches(r.data);
+      if (r.data.length === 1) setSelectedBranchId(r.data[0].id);
       setLoading(false);
     }).catch(() => setLoading(false));
   }, []);
+
+  const singleBranch = branches.length === 1;
 
 
 
@@ -110,7 +113,7 @@ export default function BranchSelector({
             {/* Brand name */}
             <div className="text-center mb-6 -mt-2 animate-fade-in-up">
               <h1 className="text-2xl font-bold text-[#1A1613] tracking-tight">{site.brandName}</h1>
-              <p className="text-xs text-[#6B6259] mt-0.5">Fresh from the oven</p>
+              <p className="text-xs text-[#6B6259] mt-0.5">Fresh dairy, lassi & ice cream</p>
             </div>
 
             <h2 className="text-base font-bold text-[#1A1613] text-center mb-4 animate-fade-in-up stagger-1">
@@ -135,54 +138,68 @@ export default function BranchSelector({
               </button>
             </div>
 
-            {/* Location instruction */}
-            <p className="text-xs text-[#6B6259] text-center mb-3 animate-fade-in-up stagger-2">Please select your location</p>
+            {singleBranch ? (
+              /* Only one branch — nothing to pick, just show where the order is from. */
+              <div className="w-full mb-6 px-4 py-3 rounded-xl text-sm animate-fade-in-up stagger-3" style={{ background: `${site.secondaryColor}55` }}>
+                <p className="text-[#6B6259] text-xs">
+                  {orderType === "pickup" ? "Pickup from" : "Ordering from"}
+                </p>
+                <p className="font-semibold text-[#1A1613]">
+                  {branches[0]?.name} — {branches[0]?.address}
+                </p>
+              </div>
+            ) : (
+              <>
+                {/* Location instruction */}
+                <p className="text-xs text-[#6B6259] text-center mb-3 animate-fade-in-up stagger-2">Please select your location</p>
 
-            {/* Use current location button (visual only for now) */}
-            <button
-              className="w-full mb-4 py-2.5 rounded-full border-2 text-sm font-semibold transition-all flex items-center justify-center gap-2 hover:scale-[1.02] hover:shadow-sm active:scale-95 animate-fade-in-up stagger-3"
-              style={{ borderColor: site.primaryColor, color: site.primaryColor, background: `${site.secondaryColor}55` }}
-              onClick={() => alert("Geolocation feature coming soon!")}
-            >
-              <span className="animate-pulse-soft">📍</span> Use Current Location
-            </button>
+                {/* Use current location button (visual only for now) */}
+                <button
+                  className="w-full mb-4 py-2.5 rounded-full border-2 text-sm font-semibold transition-all flex items-center justify-center gap-2 hover:scale-[1.02] hover:shadow-sm active:scale-95 animate-fade-in-up stagger-3"
+                  style={{ borderColor: site.primaryColor, color: site.primaryColor, background: `${site.secondaryColor}55` }}
+                  onClick={() => alert("Geolocation feature coming soon!")}
+                >
+                  <span className="animate-pulse-soft">📍</span> Use Current Location
+                </button>
 
-            {/* City select */}
-            <label className="block text-xs font-semibold text-[#1A1613] mb-1.5 animate-fade-in-up stagger-4">
-              Please Select City
-            </label>
-            <select
-              value={city}
-              onChange={(e) => setCity(e.target.value)}
-              onFocus={(e) => (e.currentTarget.style.borderColor = site.primaryColor)}
-              onBlur={(e) => (e.currentTarget.style.borderColor = "#E8DFD0")}
-              className="w-full mb-4 px-4 py-3 border border-[#E8DFD0] rounded-xl text-sm bg-white focus:outline-none transition-all focus:shadow-md animate-fade-in-up stagger-4"
-            >
-              {availableCities.map((c) => (
-                <option key={c} value={c}>{c}</option>
-              ))}
-            </select>
+                {/* City select */}
+                <label className="block text-xs font-semibold text-[#1A1613] mb-1.5 animate-fade-in-up stagger-4">
+                  Please Select City
+                </label>
+                <select
+                  value={city}
+                  onChange={(e) => setCity(e.target.value)}
+                  onFocus={(e) => (e.currentTarget.style.borderColor = site.primaryColor)}
+                  onBlur={(e) => (e.currentTarget.style.borderColor = "#E8DFD0")}
+                  className="w-full mb-4 px-4 py-3 border border-[#E8DFD0] rounded-xl text-sm bg-white focus:outline-none transition-all focus:shadow-md animate-fade-in-up stagger-4"
+                >
+                  {availableCities.map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
 
-            {/* Branch/Location select */}
-            <label className="block text-xs font-semibold text-[#1A1613] mb-1.5 animate-fade-in-up stagger-5">
-              {orderType === "pickup" ? "Please select pickup branch" : "Please select your location"}
-            </label>
-            <select
-              value={selectedBranchId}
-              onChange={(e) => setSelectedBranchId(Number(e.target.value))}
-              onFocus={(e) => (e.currentTarget.style.borderColor = site.primaryColor)}
-              onBlur={(e) => (e.currentTarget.style.borderColor = "#E8DFD0")}
-              className="w-full mb-6 px-4 py-3 border border-[#E8DFD0] rounded-xl text-sm bg-white focus:outline-none transition-all focus:shadow-md animate-fade-in-up stagger-5"
-            >
-              <option value="">
-                {loading ? "Loading branches..." : "Select branch"}
-              </option>
-              {filteredBranches.map((b) => (
-                <option key={b.id} value={b.id}>
-                  {b.name} — {b.address}
-                </option>
-              ))}
-            </select>
+                {/* Branch/Location select */}
+                <label className="block text-xs font-semibold text-[#1A1613] mb-1.5 animate-fade-in-up stagger-5">
+                  {orderType === "pickup" ? "Please select pickup branch" : "Please select your location"}
+                </label>
+                <select
+                  value={selectedBranchId}
+                  onChange={(e) => setSelectedBranchId(Number(e.target.value))}
+                  onFocus={(e) => (e.currentTarget.style.borderColor = site.primaryColor)}
+                  onBlur={(e) => (e.currentTarget.style.borderColor = "#E8DFD0")}
+                  className="w-full mb-6 px-4 py-3 border border-[#E8DFD0] rounded-xl text-sm bg-white focus:outline-none transition-all focus:shadow-md animate-fade-in-up stagger-5"
+                >
+                  <option value="">
+                    {loading ? "Loading branches..." : "Select branch"}
+                  </option>
+                  {filteredBranches.map((b) => (
+                    <option key={b.id} value={b.id}>
+                      {b.name} — {b.address}
+                    </option>
+                  ))}
+                </select>
+              </>
+            )}
 
             {/* Select button */}
             <button
@@ -208,7 +225,7 @@ export default function BranchSelector({
 
         {/* Powered by strip */}
         <p className="mt-6 text-xs text-[#6B6259]/70">
-          Powered by <span className="font-semibold">{site.brandName}</span> · Fresh &amp; hot delivery
+          Powered by <span className="font-semibold">{site.brandName}</span> · Fresh &amp; cool delivery
         </p>
 
         {/* Legal / info links */}
