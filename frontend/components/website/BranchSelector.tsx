@@ -91,13 +91,13 @@ export default function BranchSelector({
       {/* Main content */}
       <div className="relative z-10 min-h-screen flex flex-col items-center justify-center px-4 py-16">
         {/* Logo — floating above modal */}
-        <div className="mb-[-40px] relative z-20 animate-pop-in">
+        <div className="-mb-14 relative z-20 animate-pop-in">
           <div
-            className="w-20 h-20 rounded-2xl flex items-center justify-center shadow-xl border-4 border-white overflow-hidden"
+            className="w-32 h-32 rounded-full flex items-center justify-center shadow-xl border-4 border-white overflow-hidden"
             style={{ background: site.logoUrl ? "white" : `linear-gradient(135deg, ${site.primaryColor}, ${site.secondaryColor})` }}
           >
             {site.logoUrl ? (
-              <img src={site.logoUrl} alt={site.brandName} className="w-full h-full object-contain" />
+              <img src={site.logoUrl} alt={site.brandName} className="w-full h-full object-cover" />
             ) : (
               <span className="text-3xl">🔥</span>
             )}

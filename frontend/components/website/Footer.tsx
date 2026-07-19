@@ -46,7 +46,7 @@ export default function Footer({ onTrack }: { onTrack?: () => void }) {
         <div className="col-span-2 sm:col-span-4 lg:col-span-1">
           <div className="flex items-center gap-2 mb-3">
             {site.logoUrl ? (
-              <img src={site.logoUrl} alt={site.brandName} className="h-9 w-auto object-contain" />
+              <img src={site.logoUrl} alt={site.brandName} className="w-12 h-12 rounded-full object-cover border border-[#E8DFD0]" />
             ) : (
               <span className="text-xl font-extrabold text-[#1A1613]">{site.brandName}</span>
             )}
