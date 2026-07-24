@@ -1,12 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
   <defs>
-    <radialGradient id="bg" cx="50%" cy="38%" r="75%">
-      <stop offset="0%" stop-color="#d9631e"/>
+    <radialGradient id="bg" cx="50%" cy="42%" r="72%">
+      <stop offset="0%" stop-color="#e17a2e"/>
       <stop offset="55%" stop-color="#a8330f"/>
-      <stop offset="100%" stop-color="#3a140a"/>
+      <stop offset="100%" stop-color="#37130a"/>
     </radialGradient>
     <linearGradient id="flame" x1="0%" y1="100%" x2="0%" y2="0%">
-      <stop offset="0%" stop-color="#ffce6b"/>
+      <stop offset="0%" stop-color="#ffd98a"/>
       <stop offset="45%" stop-color="#f7941d"/>
       <stop offset="100%" stop-color="#ee5a24"/>
     </linearGradient>
@@ -18,38 +18,32 @@
   <g clip-path="url(#circleClip)">
     <rect width="400" height="400" fill="url(#bg)"/>
 
-    <!-- subtle inner ring -->
-    <circle cx="200" cy="200" r="188" fill="none" stroke="#ffffff" stroke-opacity="0.15" stroke-width="2"/>
+    <!-- flame emblem — generous size, centered in the upper half with room to breathe -->
+    <g transform="translate(200,158) scale(1.35)">
+      <path d="M0 -62
+               C -19 -34, -33 -15, -33 10
+               C -33 33, -17 49, 0 49
+               C 17 49, 33 33, 33 10
+               C 33 -9, 22 -24, 11 -40
+               C 13 -24, 5 -18, -1 -21
+               C -8 -24, -6 -37, 0 -51
+               C -3 -57, 0 -62, 0 -62 Z"
+            fill="url(#flame)"/>
+      <path d="M0 22
+               C -8 34, -13 45, -13 55
+               C -13 67, -7 75, 0 75
+               C 7 75, 13 67, 13 55
+               C 13 46, 8 38, 2 30
+               C 3 38, -2 41, -6 38
+               C -8 35, -5 27, 0 22 Z"
+            fill="#3a140a" fill-opacity="0.35"/>
+    </g>
 
-    <!-- flame emblem -->
-    <path d="M200 92
-             C 176 128, 158 152, 158 184
-             C 158 214, 178 234, 200 234
-             C 222 234, 242 214, 242 184
-             C 242 160, 228 142, 214 122
-             C 216 142, 206 150, 198 146
-             C 190 142, 192 126, 200 108
-             C 196 100, 200 92, 200 92 Z"
-          fill="url(#flame)"/>
-    <path d="M200 158
-             C 190 174, 184 188, 184 202
-             C 184 218, 191 228, 200 228
-             C 209 228, 216 218, 216 202
-             C 216 190, 210 180, 202 170
-             C 203 180, 197 184, 193 180
-             C 190 176, 194 166, 200 158 Z"
-          fill="#3a140a" fill-opacity="0.35"/>
+    <!-- wordmark — single clean line, well clear of the circle's edge -->
+    <text x="200" y="300" text-anchor="middle"
+          font-family="Georgia, 'Times New Roman', serif" font-size="62"
+          font-weight="700" letter-spacing="3" fill="#fdf3e3">TANDOOR</text>
 
-    <!-- wordmark -->
-    <text x="200" y="288" text-anchor="middle"
-          font-family="Georgia, 'Times New Roman', serif" font-size="52"
-          font-weight="700" letter-spacing="6" fill="#fdf3e3">TANDOOR</text>
-
-    <!-- divider -->
-    <rect x="140" y="304" width="120" height="2.5" fill="#fdf3e3" fill-opacity="0.55"/>
-
-    <text x="200" y="330" text-anchor="middle"
-          font-family="Georgia, 'Times New Roman', serif" font-size="15"
-          letter-spacing="4" fill="#fdf3e3" fill-opacity="0.8">RESTAURANT</text>
+    <rect x="146" y="318" width="108" height="3" fill="#fdf3e3" fill-opacity="0.55"/>
   </g>
 </svg>
