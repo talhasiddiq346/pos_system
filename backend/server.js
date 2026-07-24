@@ -106,13 +106,19 @@ const authLimiter = rateLimit({
 });
 app.use("/api/auth/login", authLimiter);
 
-// Order creation limit: 30 orders per minute per IP (prevents spam ordering)
+// Order creation limit: 30 orders per minute per IP (prevents spam ordering).
+// Scoped to just POST /api/orders (placing a new order) — this used to apply to
+// the whole /api/orders prefix, which also covers status updates (PATCH .../status,
+// used by the chef to mark an order ready) and listing/polling (GET). Kitchen staff
+// sharing one restaurant IP on a busy shift could burn through 30 requests in
+// seconds just refreshing and updating statuses, well before placing 30 real orders.
 const orderLimiter = rateLimit({
   windowMs: 60 * 1000,
   max: 30,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: "Too many orders, please try again in a minute" },
+  skip: (req) => !(req.method === "POST" && req.path === "/api/orders"),
 });
 app.use("/api/orders", orderLimiter);
 

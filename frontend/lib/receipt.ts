@@ -20,6 +20,11 @@ export function openPrintableReceipt(
   const agentName = (order as any).created_by_name || staffName || "Staff";
   const isCallCenter = order.source === "call_center";
 
+  const thankYouLabel =
+    order.order_type === "dine_in" ? "Thank you for dining with us" :
+    order.order_type === "delivery" ? "Thank you for your order!" :
+    "Thank you for your order, see you soon!";
+
   const rows = order.items.map((it) => {
     const addons = (it as any).selected_addons as { name: string; price: number }[] | undefined;
     const addonLines = Array.isArray(addons) && addons.length > 0
@@ -258,7 +263,7 @@ export function openPrintableReceipt(
       <hr class="divider">
 
       <div class="footer">
-        <div class="thankyou">Thank you for dining with us</div>
+        <div class="thankyou">${thankYouLabel}</div>
         <div class="note">Please keep this receipt for your records.<br>We look forward to serving you again.</div>
       </div>
 

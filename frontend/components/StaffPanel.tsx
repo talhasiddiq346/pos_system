@@ -57,6 +57,17 @@ export default function StaffPanel({
   const [phoneError, setPhoneError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editEmail, setEditEmail] = useState("");
+  const [editPhone, setEditPhone] = useState("");
+  const [editPhoneError, setEditPhoneError] = useState("");
+  const [savingEdit, setSavingEdit] = useState(false);
+
+  const [resettingId, setResettingId] = useState<number | null>(null);
+  const [resetPassword, setResetPassword] = useState("");
+  const [savingReset, setSavingReset] = useState(false);
+
   async function load() {
     setLoading(true);
     const calls: Promise<any>[] = [api.get<UserRow[]>("/users")];
@@ -145,6 +156,59 @@ export default function StaffPanel({
       await load();
     } catch (err) {
       setError(errMsg(err));
+    }
+  }
+
+  function startEdit(u: UserRow) {
+    setEditingId(u.id);
+    setEditName(u.name);
+    setEditEmail(u.email);
+    setEditPhone(u.phone || "");
+    setEditPhoneError("");
+    setResettingId(null);
+    setError("");
+  }
+
+  function handleEditPhoneChange(val: string) {
+    setEditPhone(val);
+    setEditPhoneError(val && !validatePakistaniPhone(val) ? "Valid Pakistani number chahiye (e.g. 0300-1234567)" : "");
+  }
+
+  async function handleEditSave(id: number) {
+    setError("");
+    if (!editName.trim() || !editEmail.trim()) { setError("Name and email are required"); return; }
+    if (!validatePakistaniPhone(editPhone)) { setEditPhoneError("Valid Pakistani number chahiye (e.g. 0300-1234567)"); return; }
+    setSavingEdit(true);
+    try {
+      await api.patch(`/users/${id}`, { name: editName, email: editEmail, phone: editPhone });
+      setEditingId(null);
+      await load();
+    } catch (err) {
+      setError(errMsg(err));
+    } finally {
+      setSavingEdit(false);
+    }
+  }
+
+  function startReset(id: number) {
+    setResettingId(id);
+    setResetPassword("");
+    setEditingId(null);
+    setError("");
+  }
+
+  async function handleResetSave(id: number) {
+    setError("");
+    if (resetPassword.length < 6) { setError("Password must be at least 6 characters"); return; }
+    setSavingReset(true);
+    try {
+      await api.patch(`/users/${id}/password`, { new_password: resetPassword });
+      setResettingId(null);
+      setResetPassword("");
+    } catch (err) {
+      setError(errMsg(err));
+    } finally {
+      setSavingReset(false);
     }
   }
 
@@ -296,41 +360,90 @@ export default function StaffPanel({
               <p className="px-5 py-6 text-sm text-[#494D46]">No staff yet.</p>
             ) : (
               <ul>
-                {staff.map((u) => (
+                {staff.map((u) => {
+                  const isEditing = editingId === u.id;
+                  const isResetting = resettingId === u.id;
+                  return (
                   <li
                     key={u.id}
-                    className="border-b border-[#F0F1EE] last:border-0 px-5 py-3 flex items-center justify-between gap-3 flex-wrap"
+                    className="border-b border-[#F0F1EE] last:border-0 px-5 py-3"
                   >
-                    <div>
-                      <p className="text-sm text-[#1B1D1E]">
-                        {u.name}
-                        <span className="text-[#6B7068]"> ({u.email})</span>
-                      </p>
-                      <div className="flex items-center gap-2 mt-1 flex-wrap">
-                        <RoleBadge role={u.role} />
-                        {(u as any).phone && (
-                          <span className="text-xs text-[#494D46]">📞 {(u as any).phone}</span>
-                        )}
-                        {viewerRole === "super_admin" && (
-                          <span className="text-xs mono-num text-[#6B7068]">
-                            {branchName(u.branch_id)}
-                          </span>
-                        )}
+                    {isEditing ? (
+                      <div className="space-y-2">
+                        <div className="flex flex-wrap gap-2">
+                          <input value={editName} onChange={(e) => setEditName(e.target.value)} placeholder="Full name" className="border border-[#D0D3CB] rounded-md px-2.5 py-1.5 text-sm" />
+                          <input value={editEmail} onChange={(e) => setEditEmail(e.target.value)} placeholder="Email" type="email" className="border border-[#D0D3CB] rounded-md px-2.5 py-1.5 text-sm" />
+                          <input
+                            value={editPhone}
+                            onChange={(e) => handleEditPhoneChange(e.target.value)}
+                            placeholder="03XX-XXXXXXX"
+                            className={`border border-[#D0D3CB] rounded-md px-2.5 py-1.5 text-sm ${editPhoneError ? "bg-[#FBEAE7]" : ""}`}
+                          />
+                        </div>
+                        {editPhoneError && <p className="text-xs text-[#9E3527]">{editPhoneError}</p>}
+                        <div className="flex gap-2">
+                          <button onClick={() => handleEditSave(u.id)} disabled={savingEdit} className="text-xs px-3 py-1.5 rounded-md bg-[#2F7D6B] text-white font-medium disabled:opacity-50">
+                            {savingEdit ? "Saving..." : "Save"}
+                          </button>
+                          <button onClick={() => setEditingId(null)} className="text-xs px-3 py-1.5 rounded-md border border-[#C9CCC5] font-medium">Cancel</button>
+                        </div>
                       </div>
-                    </div>
-
-                    {u.role === "branch_admin" ? (
-                      <span className="text-xs text-[#6B7068]">Managed in Branches tab</span>
+                    ) : isResetting ? (
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="text-sm text-[#1B1D1E] mr-2">{u.name}</p>
+                        <input
+                          type="password"
+                          placeholder="New password"
+                          value={resetPassword}
+                          onChange={(e) => setResetPassword(e.target.value)}
+                          className="border border-[#D0D3CB] rounded-md px-2.5 py-1.5 text-sm"
+                        />
+                        <button onClick={() => handleResetSave(u.id)} disabled={savingReset} className="text-xs px-3 py-1.5 rounded-md bg-[#1B1D1E] text-white font-medium disabled:opacity-50">
+                          {savingReset ? "Saving..." : "Confirm"}
+                        </button>
+                        <button onClick={() => setResettingId(null)} className="text-xs px-3 py-1.5 rounded-md border border-[#C9CCC5] font-medium">Cancel</button>
+                      </div>
                     ) : (
-                      <button
-                        onClick={() => handleRemove(u.id)}
-                        className="text-xs px-2.5 py-1 rounded-md border border-[#F0C9C2] text-[#9E3527] hover:bg-[#FBEAE7]"
-                      >
-                        Remove
-                      </button>
+                      <div className="flex items-center justify-between gap-3 flex-wrap">
+                        <div>
+                          <p className="text-sm text-[#1B1D1E]">
+                            {u.name}
+                            <span className="text-[#6B7068]"> ({u.email})</span>
+                          </p>
+                          <div className="flex items-center gap-2 mt-1 flex-wrap">
+                            <RoleBadge role={u.role} />
+                            {u.phone && (
+                              <span className="text-xs text-[#494D46]">📞 {u.phone}</span>
+                            )}
+                            {viewerRole === "super_admin" && (
+                              <span className="text-xs mono-num text-[#6B7068]">
+                                {branchName(u.branch_id)}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <button onClick={() => startEdit(u)} className="text-xs px-2.5 py-1 rounded-md border border-[#C9CCC5] font-medium hover:bg-[#F5F6F4]">
+                            Edit
+                          </button>
+                          <button onClick={() => startReset(u.id)} className="text-xs px-2.5 py-1 rounded-md border border-[#C9CCC5] font-medium hover:bg-[#F5F6F4]">
+                            Reset password
+                          </button>
+                          {u.role !== "branch_admin" && (
+                            <button
+                              onClick={() => handleRemove(u.id)}
+                              className="text-xs px-2.5 py-1 rounded-md border border-[#F0C9C2] text-[#9E3527] hover:bg-[#FBEAE7]"
+                            >
+                              Remove
+                            </button>
+                          )}
+                        </div>
+                      </div>
                     )}
                   </li>
-                ))}
+                  );
+                })}
               </ul>
             )}
           </div>

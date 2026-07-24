@@ -25,7 +25,7 @@ export default function BannerCarousel({ banners }: { banners: Banner[] }) {
       >
         {banners.map((banner, i) => {
           const slide = (
-            <div className="relative md:rounded-none rounded-md sm:rounded-3xl overflow-hidden h-56 sm:h-72 md:h-[28rem] bg-[#EDE8E1]">
+            <div className="relative md:rounded-none rounded-md sm:rounded-3xl overflow-hidden h-96 sm:h-128 md:h-208 bg-[#EDE8E1]">
               <img src={banner.image_url} alt="" className="w-full h-full object-cover" />
             </div>
           );

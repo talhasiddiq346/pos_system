@@ -228,21 +228,21 @@ export default function WebsiteMenu({
           <>
             <button
               onClick={onTrack}
-              className="hidden md:flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-semibold text-[#6B6259] hover:bg-[#FAF8F5] transition-all hover:scale-105 active:scale-95"
+              className="hidden md:flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-semibold text-[#6B6259] hover:bg-[#FAF8F5] transition-all hover:scale-105 active:scale-95"
             >
-              <Package size={15} /> Track
+              <Package size={20} /> Track
             </button>
 
             <button
               onClick={() => setShowCart(true)}
-              className="relative w-10 h-10 rounded-full flex items-center justify-center hover:bg-[#FAF8F5] transition-transform hover:scale-110 active:scale-95"
+              className="relative w-14 h-14 rounded-full flex items-center justify-center hover:bg-[#FAF8F5] transition-transform hover:scale-110 active:scale-95"
               style={{ color: site.primaryColor }}
             >
-              <ShoppingCart size={20} />
+              <ShoppingCart size={28} />
               {cartCount > 0 && (
                 <span
                   key={cartCount}
-                  className="absolute -top-0.5 -right-0.5 min-w-5 h-5 px-1 rounded-full text-white text-[10px] font-bold flex items-center justify-center animate-pulse-strong"
+                  className="absolute top-0.5 right-0.5 min-w-6 h-6 px-1 rounded-full text-white text-xs font-bold flex items-center justify-center animate-pulse-strong"
                   style={{ background: site.primaryColor }}
                 >
                   {cartCount}
@@ -338,7 +338,7 @@ export default function WebsiteMenu({
         </div>
       )}
 
-      <div className="sticky top-24 z-20" style={{ background: site.backgroundColor }}>
+      <div className="sticky top-28 z-20 pt-2 pb-2 shadow-sm" style={{ background: site.backgroundColor }}>
         <CategoryCarousel
           categories={categoryList.map((cat) => ({ name: cat, image_url: categoryImages[cat] }))}
           activeCategory={activeCategory}
@@ -414,7 +414,7 @@ export default function WebsiteMenu({
           categoryList.map((cat, catIdx) => {
             const catImg = categoryImages[cat];
             return (
-            <div key={cat} id={`cat-${cat}`} className="mb-10 scroll-mt-24 animate-fade-in-up" style={{ animationDelay: `${Math.min(catIdx * 0.06, 0.3)}s` }}>
+            <div key={cat} id={`cat-${cat}`} className="mb-10 scroll-mt-67.5 animate-fade-in-up" style={{ animationDelay: `${Math.min(catIdx * 0.06, 0.3)}s` }}>
               <div
                 className="relative h-28 md:h-40 rounded-3xl mb-5 overflow-hidden flex items-center justify-center shadow-lg transition-transform duration-300 hover:scale-[1.01]"
                 style={!catImg ? { background: `linear-gradient(135deg, ${site.primaryColor}, ${site.secondaryColor})` } : undefined}

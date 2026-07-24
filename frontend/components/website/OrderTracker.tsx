@@ -21,6 +21,8 @@ type OrderData = {
   total: number;
   payment_method: string;
   created_at: string;
+  rider_name?: string | null;
+  rider_phone?: string | null;
   items: { name: string; variant?: string | null; qty: number; price: number }[];
 };
 
@@ -175,6 +177,25 @@ export default function OrderTracker({
                   </p>
                 </div>
               </div>
+
+              {/* Rider info — shown once a rider has actually picked up the order */}
+              {order.rider_name && (
+                <div className="bg-white/15 backdrop-blur-sm rounded-2xl p-4 mt-3 flex items-center gap-3 animate-fade-in-up">
+                  <span className="text-2xl">🛵</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs opacity-80 uppercase tracking-wider">Your Rider</p>
+                    <p className="text-base font-bold truncate">{order.rider_name}</p>
+                  </div>
+                  {order.rider_phone && (
+                    <a
+                      href={`tel:${order.rider_phone}`}
+                      className="shrink-0 bg-white/20 hover:bg-white/30 transition-colors rounded-full px-3 py-2 text-xs font-semibold flex items-center gap-1.5"
+                    >
+                      📞 Call
+                    </a>
+                  )}
+                </div>
+              )}
 
               {/* Auto refresh indicator */}
               {!["delivered", "completed", "cancelled"].includes(order.status) && (

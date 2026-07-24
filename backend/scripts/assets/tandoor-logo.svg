@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="38%" r="75%">
+      <stop offset="0%" stop-color="#d9631e"/>
+      <stop offset="55%" stop-color="#a8330f"/>
+      <stop offset="100%" stop-color="#3a140a"/>
+    </radialGradient>
+    <linearGradient id="flame" x1="0%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0%" stop-color="#ffce6b"/>
+      <stop offset="45%" stop-color="#f7941d"/>
+      <stop offset="100%" stop-color="#ee5a24"/>
+    </linearGradient>
+    <clipPath id="circleClip">
+      <circle cx="200" cy="200" r="200"/>
+    </clipPath>
+  </defs>
+
+  <g clip-path="url(#circleClip)">
+    <rect width="400" height="400" fill="url(#bg)"/>
+
+    <!-- subtle inner ring -->
+    <circle cx="200" cy="200" r="188" fill="none" stroke="#ffffff" stroke-opacity="0.15" stroke-width="2"/>
+
+    <!-- flame emblem -->
+    <path d="M200 92
+             C 176 128, 158 152, 158 184
+             C 158 214, 178 234, 200 234
+             C 222 234, 242 214, 242 184
+             C 242 160, 228 142, 214 122
+             C 216 142, 206 150, 198 146
+             C 190 142, 192 126, 200 108
+             C 196 100, 200 92, 200 92 Z"
+          fill="url(#flame)"/>
+    <path d="M200 158
+             C 190 174, 184 188, 184 202
+             C 184 218, 191 228, 200 228
+             C 209 228, 216 218, 216 202
+             C 216 190, 210 180, 202 170
+             C 203 180, 197 184, 193 180
+             C 190 176, 194 166, 200 158 Z"
+          fill="#3a140a" fill-opacity="0.35"/>
+
+    <!-- wordmark -->
+    <text x="200" y="288" text-anchor="middle"
+          font-family="Georgia, 'Times New Roman', serif" font-size="52"
+          font-weight="700" letter-spacing="6" fill="#fdf3e3">TANDOOR</text>
+
+    <!-- divider -->
+    <rect x="140" y="304" width="120" height="2.5" fill="#fdf3e3" fill-opacity="0.55"/>
+
+    <text x="200" y="330" text-anchor="middle"
+          font-family="Georgia, 'Times New Roman', serif" font-size="15"
+          letter-spacing="4" fill="#fdf3e3" fill-opacity="0.8">RESTAURANT</text>
+  </g>
+</svg>

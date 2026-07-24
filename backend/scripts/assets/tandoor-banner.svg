@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 500" width="1600" height="500">
+  <defs>
+    <linearGradient id="bgB" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3a140a"/>
+      <stop offset="45%" stop-color="#8a2c0f"/>
+      <stop offset="100%" stop-color="#d9631e"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="82%" cy="45%" r="55%">
+      <stop offset="0%" stop-color="#ffb347" stop-opacity="0.55"/>
+      <stop offset="100%" stop-color="#ffb347" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="flameB" x1="0%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0%" stop-color="#ffce6b"/>
+      <stop offset="45%" stop-color="#f7941d"/>
+      <stop offset="100%" stop-color="#ee5a24"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1600" height="500" fill="url(#bgB)"/>
+  <rect width="1600" height="500" fill="url(#glow)"/>
+
+  <!-- faint decorative rings, tandoor-oven-mouth motif on the right -->
+  <circle cx="1310" cy="250" r="230" fill="none" stroke="#fdf3e3" stroke-opacity="0.08" stroke-width="26"/>
+  <circle cx="1310" cy="250" r="165" fill="none" stroke="#fdf3e3" stroke-opacity="0.12" stroke-width="14"/>
+
+  <!-- flame emblem, right side -->
+  <g transform="translate(1230,120) scale(1.15)">
+    <path d="M100 20
+             C 76 56, 58 80, 58 112
+             C 58 142, 78 162, 100 162
+             C 122 162, 142 142, 142 112
+             C 142 88, 128 70, 114 50
+             C 116 70, 106 78, 98 74
+             C 90 70, 92 54, 100 36
+             C 96 28, 100 20, 100 20 Z"
+          fill="url(#flameB)"/>
+    <path d="M100 86
+             C 90 102, 84 116, 84 130
+             C 84 146, 91 156, 100 156
+             C 109 156, 116 146, 116 130
+             C 116 118, 110 108, 102 98
+             C 103 108, 97 112, 93 108
+             C 90 104, 94 94, 100 86 Z"
+          fill="#3a140a" fill-opacity="0.35"/>
+  </g>
+
+  <!-- wordmark -->
+  <text x="90" y="240" text-anchor="start"
+        font-family="Georgia, 'Times New Roman', serif" font-size="108"
+        font-weight="700" letter-spacing="6" fill="#fdf3e3">TANDOOR</text>
+
+  <rect x="94" y="270" width="230" height="3" fill="#fdf3e3" fill-opacity="0.6"/>
+
+  <text x="90" y="320" text-anchor="start"
+        font-family="Georgia, 'Times New Roman', serif" font-size="30"
+        letter-spacing="3" fill="#fdf3e3" fill-opacity="0.85">Sizzling flavors, delivered hot</text>
+
+  <text x="90" y="365" text-anchor="start"
+        font-family="Georgia, 'Times New Roman', serif" font-size="20"
+        letter-spacing="2" fill="#fdf3e3" fill-opacity="0.65">Burgers · Pizza · BBQ &amp; Karahi · Desserts</text>
+</svg>

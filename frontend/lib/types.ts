@@ -20,6 +20,7 @@ export type UserRow = {
   email: string;
   role: string;
   branch_id: number | null;
+  phone?: string | null;
 };
 export type ProductVariant = {
   id: number;

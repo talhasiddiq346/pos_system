@@ -273,7 +273,7 @@ router.get("/track/:orderCode", async (req, res) => {
      FROM orders o
      JOIN branches b ON b.id = o.branch_id
      LEFT JOIN delivery_assignments da ON da.order_id = o.id
-       AND da.status = 'accepted'
+       AND da.status IN ('accepted', 'delivered')
      LEFT JOIN users u ON u.id = da.rider_id
      WHERE o.order_code = $1`,
     [orderCode.toUpperCase()]
